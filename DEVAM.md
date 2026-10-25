@@ -92,3 +92,84 @@ Not: sentetik verideki 1.000'ler hattın çalıştığını gösterir, model ba�
 7. Gerçek MRI ile ilk koşuda denenmemiş iki adım: HD-BET kafatası ayıklama ve MNI152 afin kayıt (sentetik testte atlanıyor). İlk 5 hacimde `--nii` ile çıktıyı görsel kontrol et, `_toplu_ozet.json` uyarılarına bak.
 8. GPU: venv'de CPU torch var; `KURULUM.md §2` Yol A (cu126) ile yeniden kur ve `torch.cuda.is_available()` teyit et.
 9. **ADNI/OASIS onayını BEKLEMEDEN yapılabilir (7. maddeyi açar):** OpenNeuro **ds007561** (CC0, kayıt gerekmez, 20 denek, gerçek NC/MCI/AD etiketli) ve **IXI** (CC BY-SA, ~600 etiketsiz T1) hemen indirilebilir. `onisle.py`'nin gerçek MRI'daki davranışı — HD-BET kafatası ayıklama ve MNI152 kaydı — ancak böyle denenir. Karşılaştırmaya girmez, yalnızca hattın doğru çalıştığını kanıtlar. `veri/VERI-SETI.md §2b`.
+
+---
+
+## 4. Oturum Sonu Devri — Ahmet Görkem Yavuz (G231210032) / Grup B Tamamlandı (25.10.2026)
+
+Grup B ("Dikkat Mekanizmaları ve Açıklanabilirlik") kapsamındaki tüm makale incelemeleri, hakem denetimleri, rapor bölümleri, tasarım spesifikasyonları ve iki model implementasyonu eksiksiz olarak tamamlandı:
+
+### 1. 5 Makale İncelemesi ve Opus Doğrulamaları (`makaleler/gorkem/`)
+- **P06 (Böhle 2019):** Tam metin PMC6685087 ve `moboehle/Pytorch-LRP` deposundan incelendi. 14 bölüm tam dolduruldu. §13'te **ÇELİŞKİ VAR** belgelendi (makalede 969 tarama / 344 denek; depodaki ADNI split'te 1.069 tarama / 380 denek; depoda batch size 4). LRP $\beta=0$ kuralının sağlıklı kontrollerde yanlış pozitif üretmediği ve hipokampus hacmiyle $r = -0,560$ ($p < 0,001$) ters korelasyonu doğrulandı.
+- **P07 (Zhang 2021, 3D ResAttNet):** IEEE J-BHI / arXiv:2008.04024v2 tam metninden incelendi. 14 bölüm tam dolduruldu. §13'te **ÇELİŞKİ YOK**. ResAttNet34 ile AD-NC ACC %91,3, AUC 0,984; pMCI/sMCI ACC %82,1, AUC 0,920; ADNI-2 dış test ACC %82,6, AUC 0,927. Layer 3'ten ($46\times55\times46$) 3B Grad-CAM yerelleştirmesi doğrulandı.
+- **P08 (Dyrba 2021):** *Alzheimer's Res. Ther.* (BMC) 13:191 tam metninden incelendi. 14 bölüm tam dolduruldu. §13'te **ÇELİŞKİ YOK**. $N=663$ eğitim, $N=1.655$ devasa bağımsız dış test havuzu (ADNI-3, AIBL, DELCODE; tümünde AUC $\ge 0,91$). LRP ilgi haritalarının hipokampus hacmiyle $r = -0,87$ ($p < 0,001$; CV medyanı $r = -0,84$) korelasyonu ve Bokeh tabanlı interaktif web karar desteği doğrulandı.
+- **P09 (Hoang 2023, 3D-DAM):** arXiv:2310.12574 tam metninden incelendi. 14 bölüm tam dolduruldu. §13'te **ÇELİŞKİ VAR** belgelendi (arXiv HTML özetinde %96,3 / %91,9 yazarken, PDF metninde ve Tablo 2'de AD %98,18, pMCI %91,78 yazmaktadır; katman açıklamalarında kanal sayısına "kernel size" denmesi ve SGD için 2. momentum yazımı gibi editoryal hatalar belgelendi). AIBL (%86,3) ve OASIS-1 (%83,4) dış testleri doğrulandı.
+- **P10 (Jin 2020, 3DAN):** *Adv. Sci.* 7:1903529 (PMC7375255) tam metin ve XML tablolarından incelendi. 14 bölüm tam dolduruldu. §13'te **ÇELİŞKİ YOK**. $N=1.832$ denek (Çin In-house $N=716$, ADNI $N=1.116$). 4 strateji (In-house $\rightarrow$ ADNI dış test ACC %86,1, AUC 0,912; ADNI 10-kat CV ACC %92,1, AUC 0,941). Brainnetome Atlası (273 ROI) $t$-istatistiği korelasyonu $r = 0,59$ ($p < 10^{-26}$) ve MMSE/BOS biyobelirteç ilişkileri doğrulandı.
+
+### 2. Ortak Tablo ve Rapor Katkıları
+- **`makaleler/KARSILASTIRMA-15.md`:** P06–P10 satırları tüm metrikler ve sızıntı değerlendirmeleriyle güncellendi; Grup B'den çıkan ortak dersler (Maddeler 6–10: XAI klinik güveni, biyobelirteç korelasyonu, 3B dikkat ile varyans düşüşü, kovaryat regresyonu, çok merkezli dış test zorunluluğu) eklendi.
+- **`makaleler/MAKALE-LISTESI.md`:** P06–P10 satırları "AI özeti + Opus doğrulandı" durumuna geçirildi.
+- **`rapor/ARA-RAPOR-2-TASLAK.md`:**
+  - §2.2 bölümü her 5 makale için 1-2 derinlemesine akademik paragrafla genişletildi.
+  - §3.3 use-case bölümü `rapor/sekiller/usecase.puml` ile entegre edildi.
+  - §4.3 arayüz mock-up bölümü `rapor/sekiller/mockups_spec.md` ile bağlandı.
+
+### 3. Tasarım ve Arayüz Çıktıları (`rapor/sekiller/`)
+- **`rapor/sekiller/usecase.puml`:** 3 aktör (Radyolog, Araştırmacı, Yönetici) ve UC-1...UC-6 kullanım senaryolarını, `<<include>>` ve `<<extend>>` ilişkilerini içeren eksiksiz PlantUML kodu yazıldı.
+- **`rapor/sekiller/mockups_spec.md`:** E1 (Giriş), E2 (Yükle/Anonimleştir), E3 (Ön İşleme Durumu), E4 (Karar Destek + Zorunlu Yasal Uyarı "Karar desteğidir, tanı değildir"), E5 (3 Eksenli XAI Dilim Gezintisi / Eşikleme), E6 (PDF Rapor Önizleme), E7 (Çoklu Model Karşılaştırma Paneli) spesifikasyonu yazıldı.
+
+### 4. İki Model ve XAI İmplementasyonu (`uygulama/`)
+- **P06 (`uygulama/gorkem_P06_bohle/`):**
+  - `LICENSE-Pytorch-LRP`: BSD-3 lisans dosyası eklendi.
+  - `model.py`: Böhle 2019 4 bloklu 3B CNN mimarisi (`BohleCNN3D`) ve `olustur(varyant='cnn', sinif_sayisi, girdi_boyut)` fabrika fonksiyonu yazıldı (32³ için 512, 128³ için 32.768 girişli Linear).
+  - `lrp.py`: Autograd tabanlı kararlı LRP $\beta=0$ ($\alpha=1, \beta=0$) algoritması, 3 eksenli ortogonal görselleştirme (`gorsellestir`) ve CLI desteği kodlandı.
+- **P07 (`uygulama/gorkem_P07_resattnet/`):**
+  - `model.py`: Hafif kök (3 ardışık 3x3x3 evrişim), 3B Rezidüel Öz-Dikkat bloğu ($Q, K, V$, başlangıçta $\gamma=0$), `ResAttNet3D` ve `olustur(varyant='resatt18'|'resatt34')` fabrikası yazıldı. Ablasyon desteği (`dikkat_acik=False`) eklendi.
+  - `gradcam.py`: 3B aktivasyon ve gradyan kancaları (hooks), trilinear enterpolasyonla 128³ boyutuna büyütme, 3 eksenli görselleştirme (`gorsellestir`) ve CLI arayüzü kodlandı.
+
+### 5. Donanım ve Süreç Güncellemesi
+- `nvidia-smi` çıktısıyla makinede **NVIDIA GeForce RTX 4060 Laptop GPU (8 GB VRAM)** olduğu teyit edildi. Bu donanım 128³ boyutta batch size 4 ile tüm modellerin yerel eğitimine olanak sağlamaktadır.
+- `SUREC.md §9` tablosundaki İş 4, 11, 13, 16 "bitti" olarak güncellendi.
+- Sıradaki aşama: Ertuğrul'un Grup C incelemeleri (P11–P15) ve tasarım diyagramları (`devir/DEVIR-ERTUGRUL.md`).
+
+---
+
+## 5. Oturum Sonu Devri — Ertuğrul Kabaoğlu (G231210376) / Grup C Tamamlandı (25.10.2026)
+
+Grup C ("Yama/FCN, DenseNet ve Transformer") kapsamındaki tüm makale incelemeleri, hakem denetimleri, rapor bölümleri, tasarım spesifikasyonları ve mimari diyagramlar ile iki model implementasyonu eksiksiz olarak tamamlandı:
+
+### 1. 5 Makale İncelemesi ve Opus Doğrulamaları (`makaleler/ertugrul/`)
+- **P11 (Qiu 2020, FCN + DPM Risk Haritası + MLP):** Tam metin PMC7296847 (Brain 2020) ve `vkola-lab/brain2020` GitHub deposu incelendi. 14 bölüm eksiksiz dolduruldu. §13'te **ÇELİŞKİ YOK**. 4 kohortta toplam 1.466 denek (ADNI 417, AIBL 382, FHS 102, NACC 565). Yalnızca MRI modeli ile ADNI testte %83,4 doğruluk (11 uzman nöroloğun ortalaması olan %82,3'ü geçti); füzyon modelinde %96,8 doğruluk ve 0,996 AUC. FHS otopsi kohortunda (11 denek) DPM risk haritasının amiloid-$\beta$ ve tau nörofibriler yumaklarıyla mekânsal korelasyonu doğrulandı. Kod lisansı: MIT.
+- **P12 (Solano-Rojas 2021/2020, 3B DenseNet-121):** Tam metin PMC7313295 (ANNPR 2020 / Sensors 2021) incelendi. 14 bölüm tam dolduruldu. §13'te **ÇELİŞKİ VAR** belgelendi (özet bölümünde %87 doğruluk, %87 duyarlılık, %88 özgüllük iddia edilirken; metin içi §3 ve Tablo 1'de nihai modellerin %84 doğruluk, %81 duyarlılık, %84 özgüllük olduğu; ayrıca bölmenin denek bazında değil rastgele %75/25 tarama bazında yapılarak ağır boylamsal veri sızıntısı oluştuğu kanıtlandı).
+- **P13 (Lian 2020, H-FCN):** Tam metin PMC6588512 (IEEE TPAMI 2020) incelendi. 14 bölüm tam dolduruldu. §13'te **ÇELİŞKİ YOK**. ADNI-1 baseline 830 denek (229 NC, 226 sMCI, 167 pMCI, 199 AD) üzerinde sızıntısız 10-kat CV ile AD-NC ikili görevde %90,3 doğruluk, %96,5 özgüllük ve 0,951 AUC; ADNI-2 $\rightarrow$ ADNI-1 bağımsız dış testinde %89,5 doğruluk ve 0,945 AUC doğrulandı. Projemizin birincil hedefi olan AD-NC $\ge \%85$ dengeli doğruluk için sağlam tavan referansı.
+- **P14 (Jang & Hwang 2022, M3T Transformer):** CVPR 2022 PDF tam metninden (12 sayfa) incelendi. 14 bölüm tam dolduruldu. §13'te **ÇELİŞKİ YOK**. M3T (3B CNN + 2B ResNet50 ImageNet + 8 katman Transformer, 29,12M parametre); ADNI test kümesinde %93,21 doğruluk ve 0,9634 AUC; bağımsız çok merkezli dış testlerde AIBL %93,27 doğruluk, OASIS %85,26 doğruluk (0,8961 AUC). Saf 3B ViT'in (AUC 0,8851) açık farkla geride kaldığı ve 2B ön eğitimin önemi doğrulandı. Gayriresmî kod GPL-3.0 olduğu için depoya kod alınmadı (yalnızca okuma).
+- **P15 (Dhinagar 2023, Video ve Sentetik Ön Eğitim):** arXiv:2309.04651 PDF tam metninden incelendi. 14 bölüm tam dolduruldu. §13'te **ÇELİŞKİ YOK**. Kinetics-400 (306k video), LDM (100k sentetik MRI), UKB (38,7k MRI) ön eğitimi. 3B DenseNet-121 sıfırdan eğitildiğinde ADNI 0,901 AUC ve OASIS sıfır atışlı (0-shot) dış testinde %84,0 doğruluk verdi. 1,8M parametreli Tiny DenseNet ise %83,6 OASIS doğruluğu sağlayarak 6 kat daha az parametreyle aynı başarıyı yakaladı. Swin-T video ön eğitimiyle 0,924 AUC'ye ulaştı.
+
+### 2. Ortak Tablo ve Makale Listesi Güncellemeleri
+- **`makaleler/KARSILASTIRMA-15.md`:** P11–P15 satırları eksiksiz dolduruldu; Grup C'den çıkan ortak dersler (Maddeler 11–15: yama bazlı eğitimin bellek ve otopsi avantajı, longitudinal tarama sızıntısı artefaktı, 3B DenseNet omurgasının sıfırdan eğitimdeki üstünlüğü, saf Vision Transformer'ların medikal veri kıtlığındaki kısıtı, dış testte beklenen %5-8 puanlık düşüş payı) eklendi.
+- **`makaleler/MAKALE-LISTESI.md`:** P11–P15 satırları "AI özeti + Opus doğrulandı" durumuna geçirildi. Böylece **15 MAKALENİN TAMAMI (P01–P15) %100 İNCELENMİŞ VE OPUS İLE DOĞRULANMIŞTIR.**
+
+### 3. Ara Rapor 2 Taslağı Genişletildi (`rapor/ARA-RAPOR-2-TASLAK.md`)
+- §2.3 bölümü 5 makale için ([11], [12], [13], [14], [15]) derinlemesine akademik literatür paragraflarıyla genişletildi.
+- §4.1 sistem mimarisi, §4.2 veritabanı ER ve §4.4 akış diyagramları bölümleri PlantUML kaynak dosyalarına bağlandı.
+
+### 4. Sistem Tasarım ve Mimari Çıktıları (`rapor/sekiller/`)
+- **`rapor/sekiller/mimari.puml`:** 6 katmanlı (Veri, Ön İşleme, Model, Doğrulama/Değerlendirme, Dağıtım/Çıkarım, Sunum/Veritabanı) sistem mimarisi blok diyagramı PlantUML formatında yazıldı.
+- **`rapor/sekiller/er.puml`:** 6 varlıklı (Kullanici, Tarama, OnIsleme, Model, Tahmin, AciklamaHaritasi) ve ADNI DUA uyarınca ham görüntü saklamayan ilişkisel veritabanı ER şeması PlantUML formatında yazıldı.
+- **`rapor/sekiller/akis_onisleme.puml`:** dcm2niix $\rightarrow$ HD-BET $\rightarrow$ N4 $\rightarrow$ z-skor $\rightarrow$ SimpleITK MNI152 afin $\rightarrow$ 128³ float16 ön işleme hattı akış şeması yazıldı.
+- **`rapor/sekiller/akis_egitim.puml`:** Protokol K1–K5 uyumlu, denek düzeyinde kilitli test ve 5-kat çapraz doğrulama, AMP optimizasyonu ve erken durdurmalı eğitim akış şeması yazıldı.
+- **`rapor/sekiller/akis_tahmin.puml`:** Klinik web yüklemesi, ONNX inferansı, 3 eksenli XAI (Grad-CAM/LRP/DPM) görselleştirmesi, yasal klinik uyarı ve PDF rapor üretim akış şeması yazıldı.
+
+### 5. İki Model İmplementasyonu (`uygulama/`)
+- **P11 (`uygulama/ertugrul_P11_qiu_fcn/`):**
+  - `LICENSE-brain2020`: MIT lisans dosyası eklendi.
+  - `model.py`: Qiu 2020 4 bloklu 3B FCN mimarisi (`QiuFCN3D`), dinamik adaptör (`AdaptiveAvgPool3d((6,6,6))`), `dense_to_conv()` tam evrişimli harita dönüştürücüsü ve `olustur(varyant='fcn', ...)` fabrikası yazıldı.
+  - `harita.py`: Tam hacimden tek geçişte 3B Hastalık Olasılık Haritası (DPM) üreten, tepe risk bölgesini saptayan ve 3 dik düzlemde (aksiyel, koronal, sagital) görselleştirip kaydeden CLI modülü kodlandı.
+- **P12 (`uygulama/ertugrul_P12_densenet/`):**
+  - `model.py`: Saf PyTorch 3B DenseNet omurgası (`DenseNet3D`) ile standart `densenet121` (~11.2M parametre) ve kaynak dostu `tiny_densenet` (~1.8M parametre, 4x4 blok, k=16) varyantları yazıldı; `olustur(varyant='densenet121'|'tiny_densenet', ...)` fabrika fonksiyonu kodlandı. İsteğe bağlı olarak MONAI `DenseNet121` ile de entegre olabilmektedir.
+
+### 6. Süreç Tablosu ve Sıradaki Adımlar
+- `SUREC.md §9` tablosunda İş 5 (P11-P15 inceleme), İş 12 (Mimari blok + ER + akış diyagramları) ve İş 17 (P11 ve P12 implementasyonu) tamamlandı olarak işaretlendi.
+- **Genel Durum:** 15 makale incelemesinin tamamı, Ara Rapor 2 gereksinim ve tasarım bölümlerinin tamamı, ve 6 model implementasyonunun (P01, P02, P06, P07, P11, P12) tamamı depoda hazırdır!
+- **Sıradaki Adım:** Baran Yeşilyurt'un Ara Rapor 2'yi bölüm şablonunda (`BSM401_Sablon_201611.docx`) birleştirmesi (İş 14), danışman görüşmesi ve ADNI/OASIS başvuru takibi.
+

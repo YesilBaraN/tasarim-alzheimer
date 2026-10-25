@@ -1,0 +1,71 @@
+@startuml akis_egitim
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam roundCorner 8
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam ArrowColor #2B6CB0
+skinparam ArrowThickness 1.5
+
+header BSM 401 Bilgisayar Mühendisliği Tasarımı - Ara Rapor 2
+title 3B Derin Öğrenme Tabanlı Alzheimer Karar Destek Sistemi - Eğitim ve Doğrulama Akış Diyagramı (§4.4)
+
+start
+:Ön İşlenmiş 128³ sMRI Tensörlerini Yükle\n(ADNI1 1.5T Başlangıç Kohortu: 229 NC / 382 MCI / 187 AD);
+
+partition "Aşama 1: Sızıntısız Denek Düzeyinde Bölme (PROTOKOL K1-K3)" #EDF2F7 {
+    :Tüm Taramaları Hasta/Denek Kimliği (RID) Bazında Grupla;
+    :Kilitli Dış Test Kümesini Ayır (%20 Denek, Yaş/Cinsiyet Eşlenmiş);
+    :Kalan %80 Veriyi 5-Kat Tabakalı Çapraz Doğrulamaya (5-Fold CV) Böl;
+    :Bölme Listelerini CSV Olarak Sabitle (Kesişim Kümesi = Boş);
+}
+
+partition "Aşama 2: 6 Model Ailesi İçin Eğitim Döngüsü" #FEFCBF {
+    repeat :Model Seçimi (P01, P02, P06, P07, P11, P12);
+        repeat :Katman (Fold k = 0 .. 4);
+            :Eğitim ve Doğrulama Kümelerini GPU Belleğine Al;
+            :Rastgele 3B Veri Artırma Uygula\n(±10° Rotasyon, Hafif Ölçekleme, Gauss Gürültüsü);
+            
+            while (Epoch < Max_Epoch VE Erken Durdurma Tetiklenmedi mi?) is (evet)
+                :İleri Geçiş (Forward Pass) Yap;
+                :Otomatik Karışık Duyarlık (AMP FP16) İle Bellek Tasarrufu Sağla;
+                :Sınıf Ağırlıklı Çapraz Entropi Kaybını Hesapla;
+                :Geriye Yayılım (Backpropagation) ve Ağırlık Güncellemesi (AdamW);
+                :Doğrulama Katında Dengeli Doğruluk (BAcc) ve AUC Hesapla;
+                if (Doğrulama BAcc Yeni En İyi mi?) then (evet)
+                    :Model Ağırlıklarını Kaydet (en_iyi_model_kat_k.pth);
+                    :Sabır Sayacını (Patience) Sıfırla;
+                else (hayır)
+                    :Sabır Sayacını 1 Artır;
+                endif
+            endwhile (hayır / durduruldu)
+            
+            :En İyi Ağırlıklarla Katman Metriklerini (BAcc, AUC, F1) Hesapla;
+        repeat while (Tüm 5 Katman Tamamlandı mı?) is (hayır) not (evet)
+        
+        :5 Katmanın Ortalama ve Standart Sapmasını Hesapla;
+    repeat while (Tüm 6 Model Eğitildi mi?) is (hayır) not (evet)
+}
+
+partition "Aşama 3: Protokol K5 Sağlık Denetimleri" #FEEBC8 {
+    :Ayrılabilir Sentetik Veride Doğrula (Hedef: BAcc = 1.000);
+    :Rastgele Etiketlenmiş Veride Doğrula (Hedef: BAcc ≈ 0.500);
+    if (Sağlık Testleri Başarılı mı?) then (evet)
+        :Model Öğrenme Yeteneği Onaylandı;
+    else (hayır)
+        :Hata: Model Ezberliyor veya Öğrenemiyor (Protokol İhlali);
+        stop
+    endif
+}
+
+partition "Aşama 4: Bağımsız Dış Test ve Raporlama (PROTOKOL K4)" #E6FFFA {
+    :Eğitilmiş Modelleri Dondur (Freeze Weights);
+    :Kilitli OASIS-1 Dış Test Kümesinde Sıfır Atışlı (0-Shot) Çıkarım Yap;
+    :Tüm Sonuçları JSON Kayıt Dosyalarına Yazdır;
+    :karsilastirma/tablo_uret.py İle Otomatik SONUCLAR.md Tablosunu Üret;
+    :En Yüksek Dengeli Doğruluğa Sahip Modeli ONNX Dağıtımına Seç;
+}
+
+stop
+@enduml
