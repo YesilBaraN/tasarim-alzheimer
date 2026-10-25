@@ -78,7 +78,7 @@ Rapor bölümleri: Giriş (Baran) · Literatür (herkes, kendi 5'i) · Gereksini
 >
 > BSM 401 Tasarım dersi kapsamında "Alzheimer Hastalığının Erken Teşhisi İçin 3B Derin Öğrenme Tabanlı Karar Destek Sistemi" projemiz için ADNI (Alzheimer's Disease Neuroimaging Initiative) verisine erişim gerekiyor. ADNI, başvuruda kurumsal bağlılık ve araştırma amacı aradığı için başvurunun sizin adınıza (kurumsal e-posta ile) yapılması, bizim de ekip üyesi olarak eklenmemiz en güvenli yol görünüyor. İnceleme süresi yaklaşık iki hafta olduğundan bu hafta göndermeyi hedefliyoruz.
 >
-> Adımlar: (1) https://ida.loni.usc.edu adresinde hesap açılır, (2) "ADNI" için Data Use Agreement kabul edilir, (3) başvuru formunda amaç olarak lisans tasarım projesi, kullanılacak veri olarak "ADNI1 1.5T T1 sMRI başlangıç taramaları ve NC/MCI/AD tanı etiketleri (ADNIMERGE)" yazılır, (4) ekip üyeleri: Ahmet Görkem Yavuz, Ertuğrul Kabaoğlu, Baran Yeşilyurt.
+> Adımlar: (1) https://ida.loni.usc.edu adresinde hesap açılır, (2) **ADNI ve AIBL için ortak başvuru formu** kullanılır — https://ida.loni.usc.edu/collaboration/access/appApply.jsp?project=ADNI&project=AIBL — aynı emekle iki kohort gelir ve AIBL bize gerçek bir bağımsız dış test seti kazandırır (Wen 2020 ve Bron 2021 genellemeyi AIBL'de ölçüyor); her iki projenin Data Use Agreement'ı kabul edilir, (3) başvuru formunda amaç olarak lisans tasarım projesi, kullanılacak veri olarak "ADNI1 1.5T T1 sMRI başlangıç taramaları ve NC/MCI/AD tanı etiketleri (ADNIMERGE)" yazılır, (4) ekip üyeleri: Ahmet Görkem Yavuz, Ertuğrul Kabaoğlu, Baran Yeşilyurt.
 >
 > Onay beklerken boru hattımızı OASIS-1 açık veri setiyle kuruyoruz. Uygun görürseniz başvuru metnini birlikte doldurabiliriz.
 >

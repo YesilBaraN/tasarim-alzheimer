@@ -39,6 +39,52 @@ Yasal, anında ve etiketli (NC/MCI/AD) 3B T1 verisi veren bir GitHub/Kaggle yolu
 | **IXI** (CC BY-SA) | ~600 sağlıklı T1, **etiketsiz** | anında | https://brain-development.org/ixi-dataset/ — yalnız ön işleme/kod testi |
 | Kaggle OASIS/ADNI aynaları, HF `medarc/adni-mini`, GitHub "ADNI preprocessed" release'leri | — | — | **kullanılmaz** (DUA ihlali / şartlar kapalı); ADNI onayı gelince HF kapılı setin şartları ayrıca okunur |
 
+## 2c. İkinci tur arama — "başka ücretsiz yol var mı?" (25.10.2026)
+
+Soru tekrar araştırıldı. **Sonuç değişmedi: anında indirilebilen, etiketli, işe yarar büyüklükte 3B T1 AD veri seti yok.**
+Ama aramadan iki işe yarar şey çıktı; biri doğrudan yapılacak işi değiştiriyor.
+
+### ✅ Bulgu 1 — ADNI ve AIBL için **ortak başvuru formu** var (yapılacak işi değiştirir)
+AIBL (Australian Imaging, Biomarkers and Lifestyle), ADNI ile **aynı LONI/IDA altyapısını** kullanıyor ve
+**tek formla ikisine birlikte** başvurulabiliyor:
+
+> https://ida.loni.usc.edu/collaboration/access/appApply.jsp?project=ADNI&project=AIBL
+
+Neden önemli:
+- **Aynı emekle iki kohort.** Başvuru yükü değişmiyor, onay süresi aynı.
+- **Gerçek bağımsız dış test.** AIBL, ADNI'ye çok yakın tanı ölçütleri kullanıyor; Wen 2020 ve Bron 2021
+  genellemeyi tam olarak AIBL üstünde ölçüyor. PROTOKOL'ün "Dış test" bölümü için OASIS-1'den **daha uygun**:
+  OASIS-1'de yalnız CDR var (üç sınıf yapılamıyor), AIBL'de NC/MCI/AD var → **üç sınıf görevinde de dış test**
+  yapılabilir.
+- Risk: IDA'da proje başına ayrı onay olabilir; ortak form ikisinin de kullanım şartlarını kabul ettiriyor.
+  Doğrulanmadı: iki projenin onayı aynı anda mı geliyor.
+
+**Yapılacak değişiklik:** ADNI başvurusu yalnız ADNI formundan değil, **yukarıdaki ortak formdan** yapılacak.
+
+### ❌ Bulgu 2 — EPAD: ücretsiz ama bize uygun değil
+[EPAD](https://ep-ad.org/index.php/open-source-data/) (1356 katılımcı, 3B T1w + FLAIR, ücretsiz) elendi, üç sebep:
+1. **Erişim anında değil:** ADDI "AD Workbench" hesabı + Data Access Terms + EPAD ekibinin onayı; görüntü
+   istekleri "daha uzun sürebiliyor" deniyor.
+2. **Veri buluttan çıkmıyor:** AD Workbench güvenli bir bulut çalışma alanı. Bizim planımız Kaggle/Colab'da
+   kendi hattımızı koşmak; veriyi indirip ön işleyemezsek `onisle.py` zincirine hiç giremez.
+3. **Etiket uygun değil:** EPAD bir **önleme/preklinik** kohortu — katılımcıların çoğu demans değil. AD vs NC
+   ikili görevi için anlamlı bir AD grubu yok.
+
+### Diğer kontroller (hepsi daha önceki sonucu doğruladı)
+| Kaynak | Sonuç |
+|---|---|
+| **OpenNeuro tümü** | T1w + demans etiketi olan tek set hâlâ **ds007561** (20 denek, CC0, anında). Oradaki AD/FTD setleri (ds004504, ds006036, ds004796) **yalnız EEG**; ds003592 yaşlanma kohortu, demans tanısı yok. |
+| **MIRIAD** | 46 AD + 23 HC, 708 tarama. Ama **kayıt + MIRIAD Data Use Agreement** gerekiyor ve DUA üçüncü tarafa dağıtımı kısıtlıyor — "CC BY" makalenin lisansı, verinin değil. Küçük ama meşru bir köprü; OASIS-1 gecikirse ikinci seçenek. |
+| **OASIS-1/2/3** | Hepsi Data Use Terms + online form; istekler **OASIS ekibi tarafından elle inceleniyor**, yayınlanmış bir süre yok. Barındırma **NITRC-IR**'a taşınmış (eski dokümanlardaki `central.xnat.org` güncel değil) — onay NITRC hesabına proje erişimi olarak geliyor. |
+| **Kaggle / HuggingFace / GitHub "ADNI preprocessed" aynaları** | Yine **kullanılmaz**: DUA ihlali, kaynağı belirsiz, çoğu 2B dilim. |
+
+### Karar (değişmedi, bir ekleme ile)
+1. **Bugün:** ortak **ADNI+AIBL** formu + OASIS-1 formu (üç üye ayrı ayrı) → kritik yol, ~2 hafta.
+2. **Bugün, beklemeden:** **ds007561** indir (kayıt gerekmez) → `onisle.py`'yi gerçek MRI'da dene (HD-BET + MNI
+   kaydı sentetik testte atlanıyor). 20 denek karşılaştırmaya girmez, yalnız hattın doğruluğunu kanıtlar.
+3. OASIS-1 gecikirse **MIRIAD**'a başvur (46 AD + 23 HC).
+4. AIBL onayı gelirse: iç test ADNI1, **dış test AIBL (üç sınıf dahil) + OASIS-1 (ikili)**.
+
 ## 3. Etiket kuralları
 ### 3.1 ADNI1 (ADNIMERGE.csv, `VISCODE == "bl"`)
 | `DX_bl` | Bizim sınıf | Not |
