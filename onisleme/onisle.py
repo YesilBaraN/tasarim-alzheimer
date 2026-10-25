@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-onisle.py — T1 sMRI ön işleme hattı (kafatası ayıklama → N4 → z-score → MNI152 afin → 128³).
+onisle.py — T1 sMRI ön işleme hattı (kafatası ayıklama → N4 → MNI152 afin kayıt → z-score → 128³).
+
+Adım sırası Wen 2020'nin t1-linear hattıyla aynı: normalizasyon **kayıttan sonra** yapılır. Kayıt doğal
+yoğunluklarla çalışır, z-score ise son ızgarada şablonun beyin maskesi içinde hesaplanır (herkeste aynı maske).
 
 Kullanım:
   python onisle.py --girdi <nii|img|dicom_klasörü> --cikti <klasör> --ad <isim>
@@ -18,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -39,16 +43,119 @@ for _akis in (sys.stdout, sys.stderr):
 
 SABLON_ADI = "MNI152NLin2009cAsym"
 
+def arac_bul(komut: str) -> str | None:
+    r"""Harici aracı bul. PATH'te yoksa ÇALIŞAN Python'un yanına bakar.
+
+    Sebep: `.venv\Scripts\python.exe onisle.py` gibi venv'i aktive etmeden koşturmak çok yaygın;
+    o durumda venv'in Scripts klasörü PATH'te olmaz ve `shutil.which("hd-bet")` None döner, araç
+    kurulu olduğu hâlde "bulunamadı" hatası alınır.
+    """
+    yol = shutil.which(komut)
+    if yol:
+        return yol
+    yan = Path(sys.executable).parent
+    for aday in (yan / komut, yan / f"{komut}.exe", yan / "Scripts" / komut, yan / "Scripts" / f"{komut}.exe"):
+        if aday.exists():
+            return str(aday)
+    return None
+
 
 # ----------------------------------------------------------------------------- okuma
+# ----------------------------------------------------------------------------- ASCII olmayan yollar
+# ITK'nin Windows dosya okuyucusu ASCII olmayan yolları açamıyor: "Baran Yeşilyurt" gibi bir kullanıcı
+# klasöründe `sitk.ReadImage` "Unable to open ... for reading" der, dosya sağlam olsa bile. (nibabel
+# sorunsuz okur, çünkü Python'un kendi dosya katmanını kullanır.) Sentetik testler ASCII geçici klasörde
+# koştuğu için bu hata uzun süre görünmedi. Çözüm iki aşamalı:
+#   1. Windows 8.3 kısa adına çevir (C:\Users\Baran Yeşilyurt\… → C:\Users\BARANY~1\…) — kopya yok.
+#   2. Kısa ad üretilemiyorsa (8.3 kapalı olabilir) geçici ASCII klasöre kopyala.
+
+def _kisa_yol(yol: str) -> str:
+    """Windows 8.3 kısa adı. Dosya/klasör var olmalı; üretilemezse yolu olduğu gibi döner."""
+    if os.name != "nt":
+        return yol
+    import ctypes
+    from ctypes import wintypes
+    try:
+        f = ctypes.windll.kernel32.GetShortPathNameW
+        f.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
+        f.restype = wintypes.DWORD
+        tampon = ctypes.create_unicode_buffer(32768)
+        if f(yol, tampon, 32768):
+            return tampon.value
+    except Exception:
+        pass
+    return yol
+
+
+def _ascii_aday(yol: str) -> str | None:
+    """Yalnız KLASÖRÜ 8.3 kısa adına çevirir, dosya adını korur.
+
+    Dosyanın kendisini kısaltmak uzantıyı da kısaltıyor (`sub-01_ses-01_T1w.nii.gz` → `SUB-01~1.GZ`)
+    ve ITK `.nii.gz` göremeyince "Unable to determine ImageIO reader" der. Uzantı korunmalı.
+    """
+    ad = Path(yol).name
+    if not ad.isascii():
+        return None
+    aday = str(Path(_kisa_yol(str(Path(yol).parent))) / ad)
+    return aday if aday.isascii() else None
+
+
+def dis_arac_yolu(yol) -> str:
+    """Alt sürece (hd-bet, dcm2niix) verilecek yol.
+
+    ASCII ise olduğu gibi bırakılır — geçici klasörler zaten ASCII olur. Değilse yalnız klasör
+    kısaltılır; dosyayı kısaltmak uzantıyı yok eder ve araç dosyayı tanıyamaz.
+    """
+    y = str(yol)
+    return y if y.isascii() else (_ascii_aday(y) or y)
+
+
+def sitk_oku(yol) -> sitk.Image:
+    """ASCII olmayan yolda da çalışan sitk.ReadImage."""
+    y = str(yol)
+    if y.isascii():
+        return sitk.ReadImage(y)
+    aday = _ascii_aday(y)
+    if aday:
+        return sitk.ReadImage(aday)
+    gecici = Path(tempfile.mkdtemp(prefix="itk_"))          # son çare: ASCII klasöre kopyala
+    try:
+        kopya = gecici / ("girdi" + "".join(Path(y).suffixes[-2:]))
+        shutil.copy2(y, kopya)
+        k2 = str(kopya)
+        return sitk.ReadImage(k2 if k2.isascii() else (_ascii_aday(k2) or k2))
+    finally:
+        shutil.rmtree(gecici, ignore_errors=True)
+
+
+def sitk_yaz(img: sitk.Image, yol) -> None:
+    """ASCII olmayan yolda da çalışan sitk.WriteImage (dosya henüz yokken kısa ad üretilemez →
+    önce ASCII geçiciye yazıp sonra Python ile taşır; shutil Unicode yolu sorunsuz işler)."""
+    y = str(yol)
+    if y.isascii():
+        sitk.WriteImage(img, y)
+        return
+    aday = _ascii_aday(y)                                   # klasör var → kısa adı alınabilir
+    if aday:
+        sitk.WriteImage(img, aday)
+        return
+    gecici = Path(tempfile.mkdtemp(prefix="itk_"))
+    try:
+        gec_dosya = gecici / ("cikti" + "".join(Path(y).suffixes[-2:]))
+        sitk.WriteImage(img, str(gec_dosya))
+        shutil.move(str(gec_dosya), y)
+    finally:
+        shutil.rmtree(gecici, ignore_errors=True)
+
+
 def oku(yol: Path) -> sitk.Image:
     """NIfTI / Analyze (.img+.hdr) / tek DICOM klasörü okur, LPS'e yönlendirir, float32 döner."""
     yol = Path(yol)
     if yol.is_dir():
         nii = dicomdan_nifti(yol)
-        img = sitk.ReadImage(str(nii))
+        img = sitk_oku(nii)
     else:
-        img = sitk.ReadImage(str(yol))
+        img = sitk_oku(yol)
     img = sitk.Cast(img, sitk.sitkFloat32)
     img = sitk.DICOMOrient(img, "LPS")
     return img
@@ -56,11 +163,11 @@ def oku(yol: Path) -> sitk.Image:
 
 def dicomdan_nifti(klasor: Path) -> Path:
     """dcm2niix ile DICOM klasörünü geçici NIfTI'ye çevirir."""
-    exe = shutil.which("dcm2niix")
+    exe = arac_bul("dcm2niix")
     if exe is None:
         raise RuntimeError("dcm2niix bulunamadı: pip install dcm2niix")
     gecici = Path(tempfile.mkdtemp(prefix="dcm2niix_"))
-    subprocess.run([exe, "-z", "y", "-f", "hacim", "-o", str(gecici), str(klasor)], check=True,
+    subprocess.run([exe, "-z", "y", "-f", "hacim", "-o", dis_arac_yolu(gecici), dis_arac_yolu(klasor)], check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     adaylar = sorted(gecici.glob("*.nii.gz"))
     if not adaylar:
@@ -71,18 +178,19 @@ def dicomdan_nifti(klasor: Path) -> Path:
 # ----------------------------------------------------------------------------- kafatası
 def kafatasi_ayikla(img: sitk.Image, cihaz: str = "cpu") -> tuple[sitk.Image, sitk.Image]:
     """HD-BET CLI ile beyin görüntüsü + ikili maske döner. Maske = beyin > 0 (dosya adına bağımlı değil)."""
-    exe = shutil.which("hd-bet")
+    exe = arac_bul("hd-bet")
     if exe is None:
-        raise RuntimeError("hd-bet bulunamadı: pip install hd-bet (önce torch)")
+        raise RuntimeError("hd-bet bulunamadı: pip install hd-bet (önce torch). "
+                           "Kuruluysa venv'i aktive et ya da bu betiği venv'in python'uyla koş.")
     gecici = Path(tempfile.mkdtemp(prefix="hdbet_"))
     girdi = gecici / "girdi.nii.gz"
     cikti = gecici / "beyin.nii.gz"
-    sitk.WriteImage(img, str(girdi))
-    komut = [exe, "-i", str(girdi), "-o", str(cikti), "-device", str(cihaz)]
+    sitk_yaz(img, girdi)
+    komut = [exe, "-i", dis_arac_yolu(girdi), "-o", dis_arac_yolu(cikti), "-device", str(cihaz)]
     if str(cihaz) == "cpu":
         komut += ["--disable_tta"]
     subprocess.run(komut, check=True)
-    beyin = sitk.Cast(sitk.ReadImage(str(cikti)), sitk.sitkFloat32)
+    beyin = sitk.Cast(sitk_oku(cikti), sitk.sitkFloat32)
     maske = sitk.Cast(beyin > 0, sitk.sitkUInt8)
     return beyin, maske
 
@@ -135,14 +243,17 @@ def sablon_getir(ad: str = SABLON_ADI) -> sitk.Image:
     yol = tf.get(ad, resolution=1, desc="brain", suffix="T1w", extension="nii.gz")
     if isinstance(yol, list):
         yol = yol[0]
-    sab = sitk.Cast(sitk.ReadImage(str(yol)), sitk.sitkFloat32)
+    sab = sitk.Cast(sitk_oku(yol), sitk.sitkFloat32)
     return sitk.DICOMOrient(sab, "LPS")
 
 
 def mni_kayit_sitk(hareketli: sitk.Image, sablon: sitk.Image) -> tuple[sitk.Image, float]:
     """Afin kayıt (Mattes MI, 3 seviye); şablon ızgarasına yeniden örnekler. Son metrik değerini döner."""
+    # GEOMETRY (fiziksel merkezleri hizalar), MOMENTS değil: MOMENTS yoğunluk ağırlıklı kütle merkezi
+    # hesaplar ve kafatası ayıklanmış/normalize edilmiş hacimlerde (negatif değerler, geniş sıfır arka plan)
+    # merkezi tamamen kaçırıp "images do not sufficiently overlap" hatasına yol açar.
     baslangic = sitk.CenteredTransformInitializer(
-        sablon, hareketli, sitk.AffineTransform(3), sitk.CenteredTransformInitializerFilter.MOMENTS)
+        sablon, hareketli, sitk.AffineTransform(3), sitk.CenteredTransformInitializerFilter.GEOMETRY)
     reg = sitk.ImageRegistrationMethod()
     reg.SetMetricAsMattesMutualInformation(numberOfHistogramBins=32)
     reg.SetMetricSamplingStrategy(reg.RANDOM)
@@ -168,13 +279,13 @@ def mni_kayit_ants(hareketli: sitk.Image, sablon: sitk.Image) -> tuple[sitk.Imag
         raise RuntimeError("antspyx bulunamadı; --kayit sitk kullan") from e
     import ants as _ants
     gecici = Path(tempfile.mkdtemp(prefix="ants_"))
-    sitk.WriteImage(hareketli, str(gecici / "h.nii.gz"))
-    sitk.WriteImage(sablon, str(gecici / "s.nii.gz"))
+    sitk_yaz(hareketli, gecici / "h.nii.gz")
+    sitk_yaz(sablon, gecici / "s.nii.gz")
     h = _ants.image_read(str(gecici / "h.nii.gz"))
     s = _ants.image_read(str(gecici / "s.nii.gz"))
     r = _ants.registration(fixed=s, moving=h, type_of_transform="Affine")
     _ants.image_write(r["warpedmovout"], str(gecici / "k.nii.gz"))
-    kayitli = sitk.Cast(sitk.ReadImage(str(gecici / "k.nii.gz")), sitk.sitkFloat32)
+    kayitli = sitk.Cast(sitk_oku(gecici / "k.nii.gz"), sitk.sitkFloat32)
     return kayitli, float("nan")
 
 
@@ -229,8 +340,10 @@ def hacmi_isle(girdi: Path, cikti_klasor: Path, ad: str, boyut: int = 128, kafat
         meta["uyarilar"].append("maske_hacmi")
 
     t = time.time(); img = n4_duzelt(img, maske); sureler["n4"] = time.time() - t; meta["adimlar"].append("n4")
-    t = time.time(); img = zscore(img, maske); sureler["zscore"] = time.time() - t; meta["adimlar"].append("zscore")
 
+    # SIRA: kafatası → N4 → **kayıt** → z-score → kırpma. Normalizasyon kayıttan SONRA yapılır
+    # (Wen 2020 t1-linear ile aynı): kayıt doğal yoğunluklarla çalışır ve z-score son ızgarada,
+    # şablonun beyin maskesi içinde hesaplanır — böylece herkeste aynı maske kullanılır.
     if kayit != "yok":
         t = time.time()
         if sablon is None:
@@ -246,6 +359,7 @@ def hacmi_isle(girdi: Path, cikti_klasor: Path, ad: str, boyut: int = 128, kafat
         if metrik == metrik and metrik > -0.2:  # Mattes MI negatif; sıfıra yakınsa kötü
             meta["uyarilar"].append("kayit")
 
+    t = time.time(); img = zscore(img, maske); sureler["zscore"] = time.time() - t; meta["adimlar"].append("zscore")
     t = time.time(); img = kirp_ve_boyutlandir(img, maske, boyut); sureler["boyut"] = time.time() - t; meta["adimlar"].append(f"boyut:{boyut}")
 
     arr = sitk.GetArrayFromImage(img).astype(np.float32)
@@ -259,7 +373,7 @@ def hacmi_isle(girdi: Path, cikti_klasor: Path, ad: str, boyut: int = 128, kafat
     np.save(cikti_klasor / f"{ad}.npy", arr.astype(np.float16))
     (cikti_klasor / f"{ad}.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
     if nii_yaz:
-        sitk.WriteImage(img, str(cikti_klasor / f"{ad}.nii.gz"))
+        sitk_yaz(img, cikti_klasor / f"{ad}.nii.gz")
     return meta
 
 
