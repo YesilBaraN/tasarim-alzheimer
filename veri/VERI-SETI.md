@@ -198,6 +198,38 @@ Hiçbirinde **denek kimliği** yok. PROTOKOL'ün 1. maddesi "bölme her zaman de
 veriyle o madde **uygulanamaz** — isteğe bağlı değil, teknik olarak imkânsız. Projenin tezi sızıntısız
 değerlendirme olduğu için, bu setlerle çalışmak raporun literatür bölümüyle yöntem bölümünü çelişkiye düşürür.
 
+## 2f. ANMerge / AddNeuroMed (Synapse syn22252881) — incelendi, elendi (25.10.2026)
+
+Ekipten önerilen aday. **Gerçek ve ciddi bir kohort:** AddNeuroMed konsorsiyumunun boylamsal çalışması,
+**1702 katılımcı**, çok modlu (klinik, MRI, genotip, transkriptom, proteom, metabolom).
+Yayın: *ANMerge: A comprehensive and accessible Alzheimer's disease patient-level dataset*,
+J. Alzheimer's Disease (2020).
+
+**Ama MRI verisi görüntü değil, tablo.** Synapse ağacı okunarak doğrulandı:
+
+| Klasör | İçerik |
+|---|---|
+| `Data/MRI/` | `ANMerge_MRI_FS5.3_under_90.csv` · `ANMerge_MRI_FS6.0_under_90.csv` |
+| `Data/Raw Data/MRI/` | `MRI_AddNeuroMedFS-5.3-6.0.xlsx` |
+
+`FS` = **FreeSurfer**. Yani bunlar bölgesel hacim ve kortikal kalınlık **ölçümleri**; hiçbir yerde NIfTI,
+DICOM ya da Analyze hacmi yok. Erişim ayrıca Synapse hesabı istiyor (dosya indirme 403 döndü).
+
+**Sonuç: bizim altı 3B modelimiz için kullanılamaz.** Hepsi 3B konvolüsyon ile ham hacim işliyor;
+FreeSurfer tablosu bu ağlara girmez.
+
+**Ama boşa da değil — iki yerde işe yarar:**
+1. **Öznitelik tabanlı temel çizgi.** PROTOKOL madde 9 voksel SVM'i zaten istiyor; ROI hacimleriyle
+   (hipokampüs, entorinal korteks) çalışan klasik bir sınıflandırıcı, 3B CNN'lerin gerçekten değer katıp
+   katmadığını sınamak için güçlü bir karşılaştırma noktası. Wen 2020'nin hipokampüs-ROI referansı **0,89**
+   tam olarak bu aileden.
+2. **Literatür/tartışma bölümü.** 1702 denekle bile MRI'ın tablo hâlinde paylaşılması, ham görüntü
+   paylaşımının neden nadir olduğunu gösteren somut bir örnek.
+
+**Not:** bu bulgu bir desen gösteriyor — büyük AD kohortları ham görüntüyü değil **türetilmiş ölçümü**
+paylaşıyor (ANMerge, ayrıca EPAD'ın bulut çalışma alanı). Ham 3B hacme erişimin yolu neredeyse her zaman
+başvuru + DUA: ADNI, OASIS, AIBL. `ARAMA-PROMPTU.md`'ye bu şart (3B hacim zorunlu) zaten yazılı.
+
 ## 3. Etiket kuralları
 ### 3.1 ADNI1 (ADNIMERGE.csv, `VISCODE == "bl"`)
 | `DX_bl` | Bizim sınıf | Not |
