@@ -1,0 +1,37 @@
+# veri — asla depoya girmez (ADNI DUA, OASIS şartları)
+veri/ham/
+veri/islenmis/
+*.nii
+*.nii.gz
+*.img
+*.hdr
+*.dcm
+*.npy
+ADNIMERGE*.csv
+oasis_*.csv
+
+# ağırlıklar / modeller
+*.pth
+*.pt
+*.onnx
+uygulama/**/agirliklar/
+uygulama/**/checkpoint/
+karsilastirma/kosu_kayitlari/*.pth
+
+# ortam
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.cache/
+
+# geçici
+*.tmp
+*.log
+
+# ADNI/OASIS klinik sütunlu dosyalar — DUA: üçüncü tarafa dağıtılamaz (depoya GİRMEZ)
+veri/*_etiket.csv
+veri/bolme/*_kat*.csv
+veri/bolme/*_test.csv
+# ama paylaşılabilir bölme haritası (yalnız denek kimliği + kat) depoya GİRER:
+!veri/bolme/*_bolme_haritasi.csv
