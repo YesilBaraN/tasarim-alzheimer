@@ -93,7 +93,7 @@ Rapor bölümleri: Giriş (Baran) · Literatür (herkes, kendi 5'i) · Gereksini
 | 4 | P06–P10 inceleme | Görkem | ☐ başlamadı | — | `devir/DEVIR-GORKEM.md` |
 | 5 | P11–P15 inceleme | Ertuğrul | ☐ başlamadı | — | `devir/DEVIR-ERTUGRUL.md` |
 | 6 | ADNI başvurusu | Baran + danışman | ☐ başlamadı | — | e-posta taslağı §8 |
-| 7 | OASIS-1 erişim isteği (**her üye kendi adına**, kurumsal e-posta + araştırma açıklaması) | herkes | ☐ başlamadı | — | https://sites.wustl.edu/oasisbrains/home/access/ · DUA paylaşımı yasaklar |
+| 7 | OASIS-1 erişim isteği (**her üye kendi adına**, kurumsal e-posta + araştırma açıklaması) | herkes | 🔄 **başvuru yapıldı**, onay bekleniyor | 25.10 | https://sites.wustl.edu/oasisbrains/home/access/ · DUA paylaşımı yasaklar |
 | 7b | ADNI'ye Baran'ın kendi başvurusu (danışmanınkiyle paralel) + OpenNeuro ds007561 kontrolü + IXI indirme (kod testi) | Baran | ☐ başlamadı | — | `veri/VERI-SETI.md §2b` |
 | 8 | Ortam kurulumu (kendi PC) | herkes | 🔄 Baran: ✅ kuruldu, 3 test takımı yeşil (CPU torch) | 25.10 | `KURULUM.md` · GPU için cu126 ile yeniden kurulacak · **Görkem/Ertuğrul henüz kurmadı** |
 | 8b | Git deposu + GitHub + CI | Baran | ✅ bitti | 25.10 | https://github.com/YesilBaraN/tasarim-alzheimer (public) · her push'ta Windows+Linux uçtan uca test, iki koşu da yeşil · koşu kayıtlarına commit hash'i düşüyor |

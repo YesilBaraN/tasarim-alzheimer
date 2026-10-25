@@ -230,6 +230,60 @@ FreeSurfer tablosu bu ağlara girmez.
 paylaşıyor (ANMerge, ayrıca EPAD'ın bulut çalışma alanı). Ham 3B hacme erişimin yolu neredeyse her zaman
 başvuru + DUA: ADNI, OASIS, AIBL. `ARAMA-PROMPTU.md`'ye bu şart (3B hacim zorunlu) zaten yazılı.
 
+## 2g. ⭐ `radiata-ai/brain-structure` (HuggingFace) — ARADIĞIMIZ VERİ (25.10.2026)
+
+Ekipten önerildi, incelendi ve **şimdiye kadarki en iyi aday**. İlk kez ciddi bir AD grubu var.
+
+**Nedir:** Radiata'nın beş açık çalışmayı (DLBS, IXI, NKI-RS, **OASIS-1**, **OASIS-2**) tek bir hatta
+işleyip birleştirdiği koleksiyon. **3794 tarama, 2607 denek.** Hepsi 3B NIfTI T1w MPRAGE,
+**kafatası ayıklanmış ve MNI152'ye afin hizalanmış**, 113×137×113 @ 1,5 mm.
+
+### Tanı × çalışma (tarama sayısı)
+| Çalışma | AD | Sağlıklı |
+|---|---|---|
+| DLBS | 0 | 315 |
+| IXI | 0 | 409 |
+| NKI-RS | 0 | 2283 |
+| **OASIS-1** | **100** | 314 |
+| **OASIS-2** | **165** | 208 |
+
+### ⚠ Sınıf–kohort karışması ve çözümü
+AD **yalnız OASIS'ten** geliyor; IXI/DLBS/NKI-RS tamamen sağlıklı. Tüm koleksiyonu olduğu gibi
+kullanırsak model hastalığı değil **tarayıcıyı** öğrenir (`§2d`'deki tuzağın ta kendisi).
+
+**Çözüm: yalnız OASIS-1 + OASIS-2 alt kümesiyle çalışmak.** Orada her iki sınıf da aynı kohortlarda var:
+
+```
+787 tarama · 564 denek
+denek düzeyinde:  165 Alzheimer  ·  399 sağlıklı
+```
+
+### Dikkat edilecek üç şey
+1. **Yaş uçurumu.** AD 76,0 ± 7,0 (61–96) · sağlıklı 51,8 ± 24,9 (**18**–94). OASIS-1 genç yetişkin de
+   içeriyor. Kontroller ≥60 yaşa süzülüp `eslestir.py` ile yaş/cinsiyet eşleştirilmeli; yoksa model
+   yaşı öğrenir.
+2. **Boylamsal.** 94 denekte 2, 43 denekte 3, 13 denekte 4–5 tarama var. Denek başına tek tarama alınmalı
+   ya da bölme denek düzeyinde yapılmalı (PROTOKOL madde 1 — `bolme.py` zaten öyle yapıyor).
+3. **Depodaki hazır train/val/test bölmesi KULLANILMAYACAK.** Tarama düzeyinde görünüyor; aynı deneğin
+   iki taraması farklı kümelere düşebilir. Kendi `bolme.py`'mizle denek düzeyinde böleceğiz.
+
+### Ön işleme: bizim hattımızı atlıyor
+Taramalar zaten kafatası ayıklanmış ve MNI'ye hizalanmış. Bu **sorun değil, avantaj**: beş çalışma tek bir
+hatla uyumlulaştırılmış, yani PROTOKOL madde 3'ün istediği "herkes aynı ön işleme" sağlanıyor — yeter ki
+tüm veri buradan gelsin. Bizim `onisle.py` zincirimiz bu veri için **atlanır**; yalnız 128³'e yeniden
+boyutlandırma ve z-score uygulanır.
+
+### Lisans — bilinçli karar gerektirir
+Koleksiyonun kendisi **ODC-By v1.0**, ama kart açıkça şunu diyor: *"Individual scans are licensed under
+study-specific data use agreements"* ve OASIS-1/OASIS-2 için **Custom DUA** gösteriyor. Yani AD taramaları
+OASIS verisidir ve OASIS'in kendi şartlarına tabidir.
+
+**Ekibin durumu:** OASIS başvurusu **yapıldı** (bkz. `SUREC.md §9` satır 7). Onay geldiğinde bu veriyi
+kullanma hakkı zaten doğmuş olacak; bu koleksiyon o süreçte **erken başlamayı** sağlıyor.
+Raporun yöntem bölümünde kaynak açıkça yazılmalı: *"OASIS-1/OASIS-2 taramaları, Radiata'nın
+uyumlulaştırılmış dağıtımı üzerinden; OASIS veri kullanım başvurusu <tarih>'te yapıldı."*
+Gizlenecek bir şey yok, yazıldığı sürece savunulabilir.
+
 ## 3. Etiket kuralları
 ### 3.1 ADNI1 (ADNIMERGE.csv, `VISCODE == "bl"`)
 | `DX_bl` | Bizim sınıf | Not |
