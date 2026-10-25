@@ -84,10 +84,11 @@ Not: sentetik verideki 1.000'ler hattın çalıştığını gösterir, model ba�
 ## Sıradaki (öncelik sırasıyla)
 1. **Baran, bu hafta:** danışmana `SUREC.md §8` e-postası (ADNI) + §7 soruları; OASIS-1 "Request Access"; bölümden ara rapor tarihleri.
 2. **Görkem / Ertuğrul:** `KURULUM.md` → Python 3.12 venv kur, `test_model.py` + `test_onisle.py` + `saglik_testi.py` yeşil olsun (Baran'da yeşil); sonra devir promptlarıyla P06–P15 incelemeleri. **En kritik darboğaz bu:** Ara Rapor 2 "10–15 kaynak" istiyor, elde 5 var.
-2b. **Baran:** `KURULUM.md §2b` → `git init` + ilk commit; commit hash'i olmayan koşu PROTOKOL madde 10 gereği tabloya girmez.
+2b. ✅ **Baran — bitti:** Git deposu + GitHub + CI (https://github.com/YesilBaraN/tasarim-alzheimer, public). Koşu kayıtlarına commit hash'i düşüyor, `tablo_uret.py` artık kayıtları kabul ediyor. CI her push'ta Windows+Linux'ta hattın tamamını koşuyor.
 3. **Baran:** OASIS-1 gelince `onisle.py --toplu` → `bolme.py etiket-oasis` + `bol` + `dogrula` → P01/P02 ilk koşu → `karsilastirma/SONUCLAR.md`.
 4. Ara Rapor 2'yi `BSM401_Sablon_201611.docx` biçiminde Word'e dökmek (docx skill; şablonu bölüm sitesinden indir) — literatür paragrafları P01–P15 notlarından.
 5. P02 `calistir.py`: ısınma (gövde dondurulmuş) → `coz()` iki aşamalı eğitim sarmalayıcısı — `egit.py` tek aşamalı. (P01'in makale optimizer'ı ve `tablo_uret.py` tamamlandı.)
 6. ADNI gelince aynı hattı ADNI1'de koş (`KOSU-PLANI.md` T0→T1); dış test `dis_test.py` ile OASIS-1.
 7. Gerçek MRI ile ilk koşuda denenmemiş iki adım: HD-BET kafatası ayıklama ve MNI152 afin kayıt (sentetik testte atlanıyor). İlk 5 hacimde `--nii` ile çıktıyı görsel kontrol et, `_toplu_ozet.json` uyarılarına bak.
 8. GPU: venv'de CPU torch var; `KURULUM.md §2` Yol A (cu126) ile yeniden kur ve `torch.cuda.is_available()` teyit et.
+9. **ADNI/OASIS onayını BEKLEMEDEN yapılabilir (7. maddeyi açar):** OpenNeuro **ds007561** (CC0, kayıt gerekmez, 20 denek, gerçek NC/MCI/AD etiketli) ve **IXI** (CC BY-SA, ~600 etiketsiz T1) hemen indirilebilir. `onisle.py`'nin gerçek MRI'daki davranışı — HD-BET kafatası ayıklama ve MNI152 kaydı — ancak böyle denenir. Karşılaştırmaya girmez, yalnızca hattın doğru çalıştığını kanıtlar. `veri/VERI-SETI.md §2b`.

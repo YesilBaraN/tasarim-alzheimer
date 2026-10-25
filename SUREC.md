@@ -95,7 +95,8 @@ Rapor bölümleri: Giriş (Baran) · Literatür (herkes, kendi 5'i) · Gereksini
 | 6 | ADNI başvurusu | Baran + danışman | ☐ başlamadı | — | e-posta taslağı §8 |
 | 7 | OASIS-1 erişim isteği (**her üye kendi adına**, kurumsal e-posta + araştırma açıklaması) | herkes | ☐ başlamadı | — | https://sites.wustl.edu/oasisbrains/home/access/ · DUA paylaşımı yasaklar |
 | 7b | ADNI'ye Baran'ın kendi başvurusu (danışmanınkiyle paralel) + OpenNeuro ds007561 kontrolü + IXI indirme (kod testi) | Baran | ☐ başlamadı | — | `veri/VERI-SETI.md §2b` |
-| 8 | Ortam kurulumu (kendi PC) | herkes | 🔄 Baran: ✅ kuruldu, 3 test takımı yeşil (CPU torch) | 25.10 | `KURULUM.md` · GPU için cu126 ile yeniden kurulacak · Görkem/Ertuğrul henüz kurmadı · §2b `git init` bekliyor |
+| 8 | Ortam kurulumu (kendi PC) | herkes | 🔄 Baran: ✅ kuruldu, 3 test takımı yeşil (CPU torch) | 25.10 | `KURULUM.md` · GPU için cu126 ile yeniden kurulacak · **Görkem/Ertuğrul henüz kurmadı** |
+| 8b | Git deposu + GitHub + CI | Baran | ✅ bitti | 25.10 | https://github.com/YesilBaraN/tasarim-alzheimer (public) · her push'ta Windows+Linux uçtan uca test, iki koşu da yeşil · koşu kayıtlarına commit hash'i düşüyor |
 | 9 | Ön işleme hattı (OASIS-1'de) | Baran | ☐ kod hazır, **duman testi yeşil** (sentetik) | 25.10 | `onisleme/onisle.py` · gerçek MRI, HD-BET ve MNI kaydı henüz denenmedi |
 | 10 | PROTOKOL + ortak eğitim kodu | Baran | ✅ kod hazır ve **uçtan uca koştu** (7 denetim + 4 çalışma zamanı hatası düzeltildi) | 25.10 | `uygulama/ortak/` · düzeltmeler ve doğrulama tablosu `DEVAM.md` |
 | 11 | Gereksinim analizi + use-case | Görkem | ☐ taslak var | 25.10 | `rapor/ARA-RAPOR-2-TASLAK.md §3` |
