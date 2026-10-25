@@ -10,6 +10,7 @@ bolme.py — Denek (RID / OASIS ID) düzeyinde kilitli test + 5-kat CV bölmesi 
 3) Doğrula (sızıntı kontrolü):
    python bolme.py dogrula --set adni1 --bolme veri\bolme
    python bolme.py etiket-bids  --katilimcilar D:\veri\ds007561\ham\participants.tsv --veri D:\veri\ds007561\islenmis --cikti veri\ds007561_etiket.csv
+   python bolme.py etiket-radiata --metadata D:\veri\radiata\radiata_metadata.csv --veri D:\veri\radiata\islenmis --kohort OASIS-1 OASIS-2 --min_yas 60 --cikti veri\oasis_etiket.csv
 Etiket CSV sütunları: denek_id, dosya (islenmis klasörüne göre), sinif (0 NC, 1 MCI, 2 AD), yas, cinsiyet
 """
 from __future__ import annotations
@@ -155,6 +156,122 @@ def etiket_bids(katilimcilar: Path, veri_klasor: Path, cikti: Path, sutun: str |
     return out
 
 
+DX_RADIATA = {"cognitively_normal": 0, "mild_cognitive_impairment": 1, "Alzheimers_disease": 2}
+
+
+def etiket_radiata(metadata: Path, veri_klasor: Path, cikti: Path, kohortlar: list[str],
+                   min_yas: int = 60, max_iqr: float | None = None) -> pd.DataFrame:
+    r"""`radiata-ai/brain-structure` metadata.csv -> etiket CSV (denek basina TEK satir).
+
+    Bu koleksiyon boylamsal: OASIS-2'de ayni denegin 5 oturumu olabiliyor. Etiket CSV'de denek
+    tekrarli olamaz (`bol()` bunu dogruluyor), dolayisiyla oturum secmek gerekiyor. Secim kurali
+    keyfi degil, **Wen 2020 (madde 2.2) protokolu**:
+
+    - **AD grubu:** denegin **ilk AD tanili** oturumu. En gec oturumu almak atrofiyi yapay olarak
+      buyutur (en ileri evreyi secmek demek), temel oturumu almak ise CN'ken cekilmis goruntuyu
+      AD etiketlemek demek olur. Ilk AD oturumu ikisinin de hatasini yapmaz.
+    - **CN grubu:** **yalniz kararli CN** -- hicbir oturumunda AD tanisi almamis denekler, temel
+      oturumuyla. Sonradan AD'ye donusen bir denegi "saglikli" saymak kontrol grubunu kirletir:
+      beyninde hastalik sureci zaten baslamistir, model onu AD'ye benzer bulur ve ceza alir.
+      OASIS-2'de **14 denek** boyle donusuyor; bunlar CN'den cikar, AD'ye kendi AD oturumuyla girer.
+    - **Tanisi MCI olan ya da oturumlari arasinda tutarsiz giden denek atilir.**
+
+    `--min_yas`: AD yalniz yaslilarda goruldugu icin suzgecsiz kullanilirsa CN grubu 20 yasindaki
+    gonullulerle dolar ve model yasi ogrenir, hastaligi degil (OASIS-1'de CN yas ortalamasi 51,8).
+    Varsayilan 60 ile yas farki istatistiksel olarak kayboluyor (Welch p = 0,39).
+
+    `--max_iqr`: veri kartindaki kalite notu (**buyuk deger = kotu**). Varsayilanda suzgec yok;
+    uygulanirsa kac denegin dustugu basilir.
+    """
+    df = pd.read_csv(metadata)
+    for sut in ("participant_id", "session_id", "age", "sex", "clinical_diagnosis", "study"):
+        if sut not in df.columns:
+            raise SystemExit(f"metadata.csv'de '{sut}' sutunu yok - kolonlar: {list(df.columns)}")
+    tum_kohort = sorted(set(df["study"]))
+    df = df[df["study"].isin(kohortlar)].copy()
+    if df.empty:
+        raise SystemExit(f"{kohortlar} kohortlarindan satir yok - metadata'da olanlar: {tum_kohort}")
+
+    df["session_id"] = df["session_id"].astype(str)
+    df = df.sort_values(["participant_id", "session_id"])
+
+    satirlar, eslesmeyen = [], []
+    atlanan = {"mci": 0, "tutarsiz": 0, "yas": 0, "iqr": 0}
+    for denek, g in df.groupby("participant_id", sort=True):
+        taniler = set(g["clinical_diagnosis"])
+        if not taniler <= set(DX_RADIATA) or any(DX_RADIATA[t] == 1 for t in taniler):
+            atlanan["mci"] += 1            # MCI ya da eslenemeyen tani degeri
+            continue
+        ad = g[g["clinical_diagnosis"] == "Alzheimers_disease"]
+        if len(ad):
+            kayit, sinif = ad.iloc[0], 2                       # ilk AD oturumu
+        elif taniler == {"cognitively_normal"}:
+            kayit, sinif = g.iloc[0], 0                        # kararli CN, temel oturum
+        else:
+            atlanan["tutarsiz"] += 1
+            continue
+        if float(kayit["age"]) < min_yas:
+            atlanan["yas"] += 1
+            continue
+        if max_iqr is not None and float(kayit.get("image_quality_rating", 0) or 0) > max_iqr:
+            atlanan["iqr"] += 1
+            continue
+
+        kok = f"{kayit['study']}_{kayit['participant_id']}_{kayit['session_id']}"
+        adaylar = sorted(Path(veri_klasor).glob(f"{kok}*.npy"))
+        if not adaylar:
+            eslesmeyen.append(kok)
+            continue
+        satirlar.append({"denek_id": f"{kayit['study']}_{denek}", "dosya": adaylar[0].name,
+                         "sinif": sinif, "yas": float(kayit["age"]),
+                         "cinsiyet": "F" if str(kayit["sex"]).lower().startswith("f") else "M",
+                         "kaynak": kayit["study"]})
+
+    out = pd.DataFrame(satirlar)
+    if len(out):
+        out = out.sort_values("denek_id")
+    Path(cikti).parent.mkdir(parents=True, exist_ok=True)
+    out.to_csv(cikti, index=False)
+
+    sayim = out["sinif"].value_counts().sort_index().to_dict() if len(out) else {}
+    print(f"radiata etiket (yas >= {min_yas}): {len(out)} denek -> {sayim}  (0 NC, 2 AD)  -> {cikti}")
+    print(f"  atlanan: MCI/eslenemeyen {atlanan['mci']} - tutarsiz tani {atlanan['tutarsiz']} - "
+          f"yas < {min_yas} {atlanan['yas']} - IQR {atlanan['iqr']}")
+    if eslesmeyen:
+        print(f"  UYARI {len(eslesmeyen)} denek icin islenmis .npy yok: {eslesmeyen[:5]}"
+              f"{' ...' if len(eslesmeyen) > 5 else ''}")
+        print("  -> once onisle.py'yi kos, sonra bu komutu tekrar calistir.")
+    if len(out):
+        _karistirici_raporu(out)
+    return out
+
+
+def _karistirici_raporu(out: pd.DataFrame) -> None:
+    """Yas/cinsiyet/kohort karistiricilarini basar. Rapor yontem bolumune bu sayilar yazilacak."""
+    from scipy import stats
+    g = list(out.groupby("sinif"))
+    print("  sinif basina: " + " - ".join(
+        f"{int(k)}: n={len(v)} yas {v['yas'].mean():.1f}+-{v['yas'].std():.1f} "
+        f"kadin {(v['cinsiyet'] == 'F').mean():.0%}" for k, v in g))
+    if len(g) == 2:
+        a, b = [v["yas"].dropna() for _, v in g]
+        t, py = stats.ttest_ind(a, b, equal_var=False)
+        print(f"  yas farki Welch t={t:+.2f} p={py:.4f}" + ("  -> DENGELI" if py > 0.05 else
+              "  -> UYARI yas karistirici: eslestir.py ile eslestir ya da raporda belirt"))
+        tab = pd.crosstab(out["sinif"], out["cinsiyet"])
+        if tab.shape == (2, 2):
+            _, pc = stats.fisher_exact(tab.values)
+            print(f"  cinsiyet farki Fisher p={pc:.4f}" + ("  -> DENGELI" if pc > 0.05 else
+                  "  -> UYARI cinsiyet karistirici: raporda ortak degisken olarak belirtilmeli, "
+                  "ayrica cinsiyete gore ayri metrik sunulmali"))
+    if "kaynak" in out.columns and out["kaynak"].nunique() > 1:
+        print("  kohort x sinif:")
+        print("    " + pd.crosstab(out["kaynak"], out["sinif"]).to_string().replace("\n", "\n    "))
+        tek = [k for k, v in out.groupby("kaynak")["sinif"].nunique().items() if v < 2]
+        if tek:
+            print(f"  UYARI tek sinifli kohort: {tek} -> model kohortu (tarayiciyi) ogrenebilir")
+
+
 def birlestir(girdiler: list[Path], cikti: Path) -> pd.DataFrame:
     """Birden çok etiket CSV'sini tek dosyada birleştirir ve kohort × sınıf tablosunu basar.
 
@@ -265,6 +382,9 @@ def main():
     a = s.add_parser("etiket-adni"); a.add_argument("--adnimerge", required=True); a.add_argument("--islenmis", required=True); a.add_argument("--cikti", required=True)
     o = s.add_parser("etiket-oasis"); o.add_argument("--csv", required=True); o.add_argument("--islenmis", required=True); o.add_argument("--cikti", required=True); o.add_argument("--min_yas", type=int, default=60)
     bd = s.add_parser("etiket-bids"); bd.add_argument("--katilimcilar", required=True); bd.add_argument("--veri", required=True); bd.add_argument("--cikti", required=True); bd.add_argument("--sutun", default=None); bd.add_argument("--kaynak", default=None)
+    rd = s.add_parser("etiket-radiata"); rd.add_argument("--metadata", required=True); rd.add_argument("--veri", required=True)
+    rd.add_argument("--cikti", required=True); rd.add_argument("--kohort", nargs="+", required=True)
+    rd.add_argument("--min_yas", type=int, default=60); rd.add_argument("--max_iqr", type=float, default=None)
     br = s.add_parser("birlestir"); br.add_argument("--girdi", nargs="+", required=True); br.add_argument("--cikti", required=True)
     b = s.add_parser("bol"); b.add_argument("--etiket", required=True); b.add_argument("--set", required=True); b.add_argument("--cikti", default="veri/bolme"); b.add_argument("--test_oran", type=float, default=0.15); b.add_argument("--kat", type=int, default=5); b.add_argument("--tohum", type=int, default=2026)
     d = s.add_parser("dogrula"); d.add_argument("--set", required=True); d.add_argument("--bolme", default="veri/bolme")
@@ -272,6 +392,7 @@ def main():
     if x.komut == "etiket-adni": etiket_adni(Path(x.adnimerge), Path(x.islenmis), Path(x.cikti))
     elif x.komut == "etiket-oasis": etiket_oasis(Path(x.csv), Path(x.islenmis), Path(x.cikti), x.min_yas)
     elif x.komut == "etiket-bids": etiket_bids(Path(x.katilimcilar), Path(x.veri), Path(x.cikti), x.sutun, x.kaynak)
+    elif x.komut == "etiket-radiata": etiket_radiata(Path(x.metadata), Path(x.veri), Path(x.cikti), x.kohort, x.min_yas, x.max_iqr)
     elif x.komut == "birlestir": birlestir([Path(g) for g in x.girdi], Path(x.cikti))
     elif x.komut == "bol": bol(Path(x.etiket), x.set, Path(x.cikti), x.test_oran, x.kat, x.tohum)
     elif x.komut == "dogrula": raise SystemExit(0 if dogrula(x.set, Path(x.bolme)) else 1)
