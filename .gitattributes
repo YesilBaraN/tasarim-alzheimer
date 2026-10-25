@@ -1,0 +1,21 @@
+# Satir sonlari: depoda her zaman LF. Ucumuz Windows'tayiz ama farkli Git ayarlariyla
+# calisirsak "dosyanin tamami degismis" gibi gorunen diff'ler olusur; bu dosya onu engeller.
+* text=auto
+*.py   text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+*.csv  text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+
+# Ikili dosyalar (zaten .gitignore'da ama yanlislikla eklenirse bozulmasin)
+*.png  binary
+*.jpg  binary
+*.pdf  binary
+*.docx binary
+*.pptx binary
+*.npy  binary
+*.pth  binary
+*.onnx binary
+*.nii  binary
+*.gz   binary

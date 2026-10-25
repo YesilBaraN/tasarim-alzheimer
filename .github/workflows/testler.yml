@@ -1,0 +1,74 @@
+# Her push'ta hattın tamamı koşar. Amaç: biri bozuk kod gönderirse haftalar sonra değil
+# o anda görülsün. Bu projede 11 hata "kod hiç koşmamıştı" diye aylarca gizli kalabilirdi.
+#
+# Hem Windows hem Linux'ta koşuyoruz: üçümüz Windows'tayız (Türkçe kod sayfasına bağlı
+# UnicodeEncodeError gibi hatalar yalnız orada çıkar), Kaggle/Colab ise Linux.
+name: testler
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  testler:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      # Testler için gereken çekirdek paketler. torch CPU tekerleğinden gelir (GPU gerekmez).
+      # requirements.txt'in tamamı (hd-bet → nnunetv2) ağır ve testler için gerekmiyor;
+      # o kurulum ayrı bir adımda, kırmızıya düşürmeden denenir.
+      - name: Çekirdek paketler
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install monai nibabel SimpleITK scikit-learn pandas numpy scipy onnx onnxruntime onnxscript tqdm pyyaml
+
+      - name: Sürümler
+        run: |
+          python -c "import sys, torch, monai, numpy, SimpleITK; print('python', sys.version.split()[0]); print('torch', torch.__version__); print('monai', monai.__version__); print('numpy', numpy.__version__); print('SimpleITK', SimpleITK.__version__)"
+
+      - name: Model duman testi
+        run: python uygulama/test_model.py
+
+      - name: Ön işleme duman testi
+        run: python onisleme/test_onisle.py
+
+      - name: Sağlık testleri (PROTOKOL K5)
+        run: python uygulama/ortak/saglik_testi.py --tut ci_cikti
+
+      # Buradan sonrası dağıtım zinciri: sağlık testinin ürettiği checkpoint ONNX'e aktarılır,
+      # karar destek katmanı onu okur, tablo üreteci de koşu kayıtlarından satır basar.
+      - name: ONNX dışa aktarma
+        run: |
+          CKPT=$(ls ci_cikti/kayitlar/*saglik_ayrilabilir*_k0_*.pth | head -1)
+          echo "checkpoint: $CKPT"
+          python uygulama/ortak/onnx_disa_aktar.py --model ortak --varyant sigcnn --ckpt "$CKPT" --cikti ci_cikti/model.onnx --boyut 32
+
+      - name: Karar destek çıkarımı
+        run: python uygulama/api/tahmin.py --onnx ci_cikti/model.onnx --npy ci_cikti/hacimler/S001.npy --siniflar NC AD --json
+
+      - name: Tablo üreteci
+        run: python karsilastirma/tablo_uret.py --kayitlar ci_cikti/kayitlar --tumu
+
+      # requirements.txt'in tamamı gerçekten kurulabiliyor mu? Bilgi amaçlı: ağır bir
+      # bağımlılık (hd-bet/nnunetv2) geçici olarak bozulursa testleri kırmızıya düşürmesin,
+      # ama logda görünsün ki KURULUM.md'nin eskidiğini fark edelim.
+      - name: Tam requirements (bilgi amaçlı)
+        continue-on-error: true
+        run: pip install -r onisleme/requirements.txt
