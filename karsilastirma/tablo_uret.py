@@ -4,9 +4,22 @@ tablo_uret.py — `karsilastirma/kosu_kayitlari/*.json` → SONUCLAR.md satırla
 
 Ne yapar:
  1. Koşu kayıtlarını okur, PROTOKOL/KURULUM kurallarına uymayanları **tablodan çıkarır** ve neden çıkardığını yazar:
-    - `gpu` alanı geliştirme kartını gösteriyorsa (KURULUM §0b: RTX 3050 yalnız hata ayıklama içindir),
+    - **etkin batch** (batch × accum) ya da **girdi boyutu** protokol değerinden farklıysa (PROTOKOL madde 7),
     - `model_notu` mimari sapma bildiriyorsa (ör. VoxCNN padding=1 — PROTOKOL madde 3),
     - `commit` yoksa ("git-yok" — PROTOKOL madde 10).
+
+    ⚠ **GPU adı artık dışlama nedeni değil.** Eski kural "RTX 3050 geliştirme kartıdır, tabloya
+    girmez" diyordu; o kural modellerin bu karta sığmadığı **varsayımıyla** yazılmıştı. Ölçtük:
+    dokuz yapılandırmanın hepsi uygun batch ile 4 GB'a sığıyor (`KURULUM §0b`). Kuralı olduğu gibi
+    bırakmak gerçek sonuçlarımızın tamamını çöpe atıyordu.
+
+    Kuralın asıl amacı korunuyor ama doğru değişmez üzerine kuruluyor: karşılaştırmayı bozan şey
+    kartın markası değil, **eğitim yordamının farklı olması**. 4 GB'lık kartta `--batch 2 --accum 2`
+    ile koşan bir model, 24 GB'lık kartta `--batch 4` ile koşanla **aynı etkin batch'i** görür ve
+    karşılaştırma geçerlidir. Farklı etkin batch ise geçersizdir, kart ne olursa olsun.
+
+    GPU adı yine de kayıtta tutuluyor ve bir grup içinde kartlar karışıksa tabloya **not** düşülüyor:
+    metrikler karşılaştırılabilir, ama `Epoch/süre` sütunu karşılaştırılamaz.
  2. Kalanları (set, görev, model, varyant, ön eğitim, etiket) olarak gruplar; LR taraması varsa **doğrulama**
     BAcc'ine göre tek LR seçer (madde 2/K2: seçim asla test üstünden yapılmaz), sonra o LR'nin
     kat × tohum koşularının **test** metriklerini ortalama ± ss olarak basar.
@@ -42,7 +55,10 @@ KOK = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(KOK))
 from uygulama.ortak import metrikler  # noqa: E402
 
-GELISTIRME_GPU = ("RTX 3050",)   # KURULUM §0b: tabloya girmez
+# PROTOKOL madde 7: tabloya giren her koşu aynı eğitim yordamını kullanır.
+# Etkin batch = batch × accum; kartın boyutu bunu değiştirmez, yalnız nasıl bölündüğünü değiştirir.
+PROTOKOL_ETKIN_BATCH = 4
+PROTOKOL_BOYUT = 128
 BEKLENEN_KAT = 5
 BEKLENEN_TOHUM = (2026, 2027, 2028)
 
@@ -65,10 +81,22 @@ def kayitlari_oku(klasor: Path) -> list[dict]:
     return out
 
 
-def dislama_nedeni(k: dict) -> str | None:
-    gpu = str(k.get("gpu", ""))
-    if any(g in gpu for g in GELISTIRME_GPU):
-        return f"geliştirme GPU'su ({gpu}) — KURULUM §0b"
+def etkin_batch(k: dict) -> int | None:
+    a = k.get("ayar") or {}
+    b, acc = a.get("batch"), a.get("accum", 1)
+    return None if b is None else int(b) * int(acc or 1)
+
+
+def dislama_nedeni(k: dict, etkin_batch_bek: int = PROTOKOL_ETKIN_BATCH,
+                   boyut_bek: int = PROTOKOL_BOYUT) -> str | None:
+    eb = etkin_batch(k)
+    if eb is not None and eb != etkin_batch_bek:
+        a = k.get("ayar") or {}
+        return (f"etkin batch {eb} (batch {a.get('batch')} × accum {a.get('accum', 1)}), "
+                f"beklenen {etkin_batch_bek} — PROTOKOL madde 7")
+    boyut = k.get("boyut", (k.get("ayar") or {}).get("boyut"))
+    if boyut is not None and int(boyut) != boyut_bek:
+        return f"girdi boyutu {boyut}³, beklenen {boyut_bek}³ — PROTOKOL madde 7"
     if k.get("model_notu") and "sapma" in str(k["model_notu"]):
         return f"mimari sapma ({k['model_notu']}) — PROTOKOL madde 3"
     if str(k.get("commit", "")) in ("", "git-yok"):
@@ -138,6 +166,8 @@ def dis_bacc_ozeti(kosular: list[dict], dis: dict[str, dict]) -> str:
     v = [dis[r["ad"]]["metrik"]["bacc"] for r in kosular if r["ad"] in dis]
     if not v:
         return "—"
+    if len(v) < 2:
+        return f"{np.mean(v):.3f} (tek koşu)"   # ±0,000 yazmak sapmayı sıfır sanmaya yol açıyor
     return f"{np.mean(v):.3f}±{np.std(v):.3f}"
 
 
@@ -164,6 +194,7 @@ def tablo(kayitlar: list[dict], dis: dict[str, dict]) -> list[str]:
         _secilen, kosular, tarama_notu = tarama_sec(gruplar[a])
         ozet = metrikler.ozet([r["test"] for r in kosular])
         commitler = {r.get("commit", "?") for r in kosular}
+        kartlar = {str(r.get("gpu", "?")) for r in kosular}
         ek = {
             "dis_bacc": dis_bacc_ozeti(kosular, dis),
             "param": f"{kosular[0].get('parametre', 0) / 1e6:.2f}M",
@@ -186,6 +217,11 @@ def tablo(kayitlar: list[dict], dis: dict[str, dict]) -> list[str]:
             notlar.append(f"- ⚠ {etiket}: EKSİK — {kapsam} (PROTOKOL madde 5)")
         if len(commitler) > 1:
             notlar.append(f"- ⚠ {etiket}: koşular farklı commit'lerden ({sorted(commitler)})")
+        if len(kartlar) > 1:
+            # Metrikler geçerli (etkin batch ve boyut zaten eşit, yoksa dışlanmış olurdu),
+            # ama süre farklı kartlarda karşılaştırılamaz.
+            notlar.append(f"- ℹ {etiket}: koşular farklı GPU'larda üretildi ({sorted(kartlar)}) — "
+                          f"metrikler karşılaştırılabilir, `Epoch/süre` sütunu karşılaştırılamaz")
         if ek["dis_bacc"] == "—":
             notlar.append(f"- {etiket}: dış test yok (`dis_test.py` ile üret)")
     return satirlar, notlar
@@ -197,7 +233,11 @@ def main(argv=None):
     p.add_argument("--kayitlar", default="karsilastirma/kosu_kayitlari")
     p.add_argument("--dis", default="karsilastirma/dis_test")
     p.add_argument("--set", default=None, help="yalnız bu veri seti (ör. adni1)")
-    p.add_argument("--gorev", default=None, choices=[None, "ikili", "uc"])
+    p.add_argument("--gorev", default=None, choices=[None, "ikili", "ikili-mci", "uc"])
+    p.add_argument("--etkin_batch", type=int, default=PROTOKOL_ETKIN_BATCH,
+                   help="tabloya girmek icin gereken etkin batch (batch x accum)")
+    p.add_argument("--boyut", type=int, default=PROTOKOL_BOYUT,
+                   help="tabloya girmek icin gereken girdi boyutu")
     p.add_argument("--tumu", action="store_true", help="dışlama kurallarını uygulama (hata ayıklama)")
     p.add_argument("--yaz", default=None, help="çıktıyı bu dosyaya da yaz")
     a = p.parse_args(argv)
@@ -216,7 +256,7 @@ def main(argv=None):
 
     tutulan, atilan = [], []
     for k in kayitlar:
-        neden = None if a.tumu else dislama_nedeni(k)
+        neden = None if a.tumu else dislama_nedeni(k, a.etkin_batch, a.boyut)
         (atilan if neden else tutulan).append((k, neden))
     if atilan:
         print(f"TABLO DIŞI {len(atilan)} koşu:")

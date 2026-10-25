@@ -49,9 +49,22 @@ def ozet(sonuclar: list[dict]) -> dict:
     return o
 
 
+def bicim(m: dict) -> str:
+    """ortalama ± ss — ama **tek koşuda sapma basılmaz**.
+
+    `±0,000` yazmak yanlış ve tehlikeli: sapmanın sıfır olduğunu, yani sonucun kat/tohum
+    değişiminden etkilenmediğini ima ediyor. Gerçekte tek koşu olduğu için sapma
+    **hesaplanamamıştır**. Prova raporunda bu yanlış okumayı elle not etmek zorunda kaldık;
+    kaynağında düzeltiliyor. n ≥ 2 olunca normal `ort ± ss` biçimine dönüyor.
+    """
+    if m.get("n", 0) < 2:
+        return f"{m['ort']:.3f} (tek koşu)"
+    return f"{m['ort']:.3f}±{m['ss']:.3f}"
+
+
 def satir(model: str, gorev: str, on_egitim: str, o: dict, ek: dict | None = None) -> str:
     """SONUCLAR.md satırı (PROTOKOL 'sonuç satırı biçimi')."""
-    f = lambda k: f"{o[k]['ort']:.3f}±{o[k]['ss']:.3f}"
+    f = lambda k: bicim(o[k])
     ek = ek or {}
     return (f"| {model} | {gorev} | {on_egitim} | {f('bacc')} | {f('auc')} | {f('f1_makro')} | {f('sens')} | {f('spec')} | {f('acc')} | "
             f"{ek.get('dis_bacc', '—')} | {ek.get('param', '—')} | {ek.get('epoch_sure', '—')} | {ek.get('vram', '—')} | {ek.get('commit', '—')} |")
