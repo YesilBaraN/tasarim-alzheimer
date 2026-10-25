@@ -76,6 +76,27 @@ python veri\indir.py --hedef D:\veri --dogrula   # indirme, eldekini sına
 
 ADNI ve OASIS bu betikle **inmez**: başvuru ve Data Use Agreement isterler (`veri/VERI-SETI.md §2`).
 
+### 2c. İşlenmiş veriyi al (3,5 saat kazandırır)
+Ham veriyi indirmek dakikalar sürer; **ön işlemek ~3,5 saat** (143 hacim × ~75–95 sn, GPU'da).
+Üçümüz ayrı ayrı yaparsak 10 saat boşa gider. İki yol var:
+
+**a) Hazırını indir (önerilen).** İşlenmiş hacimler (`128³ float16 .npy`, ~600 MB) depo **Releases**
+bölümünden iner. Git geçmişine girmez, klonu şişirmez. Kaynak setler CC0 olduğu için paylaşımı serbest.
+
+**b) Kendin üret (birebir aynı çıkar).** Zincirin tamamı tohuma bağlı ve belirli:
+```powershell
+python veri\indir.py --hedef D:\veri
+python uygulama\ortak\bolme.py etiket-bids --katilimcilar D:\veri\ds007857\ham\participants.tsv --veri D:\veri\ds007857\ham --cikti veri\ds007857_etiket.csv
+python uygulama\ortak\eslestir.py --etiket veri\ds007857_etiket.csv --cikti veri\ds007857_eslesmis.csv --oran 1.5 --kaliper 3
+python onisleme\onisle.py --girdi D:\veri\ds007857\ham --cikti D:\veri\ds007857\islenmis --toplu --liste veri\ds007857_eslesmis.csv --cihaz 0
+```
+Aynı tohumla aynı denekler seçilir, aynı bölme çıkar. Depodaki `veri\ds007857_eslesmis.csv` ile
+karşılaştırarak doğrulayabilirsin — fark varsa tohum ya da etiket CSV'si farklıdır.
+
+**Etiket dosyaları depoda:** `veri/ds007561_etiket.csv`, `veri/ds007857_etiket.csv`,
+`veri/ds007857_eslesmis.csv`. Bunlar CC0 setlerin tanı/yaş/cinsiyet bilgisi olduğu için paylaşılabilir.
+**ADNI/OASIS etiketleri asla girmez** (DUA) — onları herkes kendi indirmesinden üretir.
+
 ### 3. Nerede kaldığımızı oku
 `SUREC.md` → **§9 NEREDE KALDIK** tablosunda kendi satırlarını bul. Sonra `DEVAM.md` (son oturumda ne yapıldı, ne bozuktu, ne düzeltildi) ve `uygulama/PROTOKOL.md` (bağlayıcı kurallar).
 

@@ -393,8 +393,34 @@ def hacmi_isle(girdi: Path, cikti_klasor: Path, ad: str, boyut: int = 128, kafat
     return meta
 
 
-def toplu(girdi_klasor: Path, cikti_klasor: Path, **kw) -> list[dict]:
+def liste_oku(yol: Path) -> set[str]:
+    """İşlenecek dosya adlarını okur: etiket CSV'si (`dosya` sütunu) ya da satır satır düz metin.
+
+    Neden: eşleştirilmiş alt küme (`eslestir.py` çıktısı) klasörün tamamı değil; 287 hacmin 123'ünü
+    işlemek gerekiyor. Klasörü kopyalamak yerine listeyi süzüyoruz.
+    """
+    yol = Path(yol)
+    if yol.suffix.lower() == ".csv":
+        import csv
+        with open(yol, encoding="utf-8", newline="") as f:
+            satirlar = list(csv.DictReader(f))
+        sutun = "dosya" if satirlar and "dosya" in satirlar[0] else None
+        if sutun is None:
+            raise SystemExit(f"{yol}: 'dosya' sütunu yok")
+        return {Path(r[sutun]).name for r in satirlar if r.get(sutun)}
+    return {Path(x.strip()).name for x in yol.read_text(encoding="utf-8").splitlines() if x.strip()}
+
+
+def toplu(girdi_klasor: Path, cikti_klasor: Path, liste: Path | None = None, **kw) -> list[dict]:
     dosyalar = sorted(list(Path(girdi_klasor).rglob("*.nii.gz")) + list(Path(girdi_klasor).rglob("*.nii")))
+    if liste is not None:
+        istenen = liste_oku(liste)
+        once = len(dosyalar)
+        dosyalar = [d for d in dosyalar if d.name in istenen]
+        bulunamayan = istenen - {d.name for d in dosyalar}
+        print(f"liste süzgeci: {once} dosyadan {len(dosyalar)} tanesi işlenecek"
+              + (f"; listede olup klasörde bulunamayan {len(bulunamayan)}: {sorted(bulunamayan)[:5]}"
+                 if bulunamayan else ""))
     sablon = sablon_getir() if kw.get("kayit", "sitk") != "yok" else None
     sonuc = []
     for i, d in enumerate(dosyalar, 1):
@@ -418,6 +444,7 @@ def main(argv=None):
     p.add_argument("--cikti", required=True)
     p.add_argument("--ad", default=None)
     p.add_argument("--toplu", action="store_true")
+    p.add_argument("--liste", default=None, help="yalnız bu listedeki dosyalar (etiket CSV'si ya da düz metin)")
     p.add_argument("--boyut", type=int, default=128)
     p.add_argument("--kafatasi", choices=["hdbet", "yok"], default="hdbet")
     p.add_argument("--kayit", choices=["sitk", "ants", "yok"], default="sitk")
@@ -426,7 +453,7 @@ def main(argv=None):
     a = p.parse_args(argv)
     kw = dict(boyut=a.boyut, kafatasi=a.kafatasi, kayit=a.kayit, cihaz=a.cihaz, nii_yaz=a.nii)
     if a.toplu:
-        toplu(Path(a.girdi), Path(a.cikti), **kw)
+        toplu(Path(a.girdi), Path(a.cikti), liste=Path(a.liste) if a.liste else None, **kw)
     else:
         ad = a.ad or Path(a.girdi).name.split(".")[0]
         m = hacmi_isle(Path(a.girdi), Path(a.cikti), ad, **kw)
