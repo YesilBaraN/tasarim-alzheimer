@@ -32,6 +32,8 @@ ADNI veri tabanından T1 ağırlıklı 3B yapısal MRI (sMRI) ve NC / MCI / AD k
 | `uygulama/ortak/saglik_testi.py` | PROTOKOL K5 sağlık testleri — eğitim hattını sentetik veriyle uçtan uca koşar (veri/GPU gerekmez) |
 | `uygulama/ortak/svm_kos.py` | Voksel tabanlı lineer SVM temel çizgisi (madde 9b), `egit.py` ile aynı JSON şeması |
 | `uygulama/ortak/dis_test.py` | Dış test: başka sette sıfır-atış değerlendirme (K4 sızıntı kontrollü) |
+| `uygulama/api/tahmin.py` | Karar destek çıkarımı: ön işleme + ONNX → sınıf ve olasılıklar |
+| `uygulama/api/isi_haritasi.py` | Açıklanabilirlik: Grad-CAM ve oklüzyon haritaları (.npy + 3 kesitli .png) |
 | `uygulama/<kişi>_P<no>_<model>/` | Her implementasyonun kendi klasörü |
 | `karsilastirma/SONUCLAR.md` | Altı modelin sonuç tablosu (şablon) |
 | `karsilastirma/KOSU-PLANI.md` | GPU bütçesi hesabı, indirgenmiş plan, T0–T4 öncelik katmanları, komut sırası |
@@ -62,6 +64,17 @@ python onisleme\test_onisle.py
 python uygulama\ortak\saglik_testi.py
 ```
 Üçünde de `OK` satırları ve sonda `TÜM ... OK` görmelisin. Görmezsen kod değiştirmeden önce bunu çöz.
+
+### 2b. Açık veriyi indir (herkes aynı dosyaları alsın)
+```powershell
+python veri\indir.py --hedef D:\veri             # D: yoksa Desktop\veri de olur
+python veri\indir.py --hedef D:\veri --dogrula   # indirme, eldekini sına
+```
+İki CC0 veri seti iner — **ds007561** (20 denek, 284 MB) ve **ds007857** (287 denek, 2,6 GB).
+
+**Veri depoya girmez**; betik hedefi depo içinde seçersen reddeder. Sebep hukuki değil (CC0 yeniden dağıtıma izin verir), teknik: 2,9 GB ikili dosya herkesin klonunu şişirir, GitHub 1 GB üstü depolarda uyarır, Git LFS'in ücretsiz katmanı 1 GB — ve veri zaten tek komutla iniyor. Paylaştığımız şey veri değil, **onu birebir aynı indiren betik**; böylece üçümüzde de aynı dosyalar olur.
+
+ADNI ve OASIS bu betikle **inmez**: başvuru ve Data Use Agreement isterler (`veri/VERI-SETI.md §2`).
 
 ### 3. Nerede kaldığımızı oku
 `SUREC.md` → **§9 NEREDE KALDIK** tablosunda kendi satırlarını bul. Sonra `DEVAM.md` (son oturumda ne yapıldı, ne bozuktu, ne düzeltildi) ve `uygulama/PROTOKOL.md` (bağlayıcı kurallar).

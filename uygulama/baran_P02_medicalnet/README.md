@@ -33,6 +33,6 @@ Elle yüklemede "eksik 0" (bas.* hariç) görmelisin.
 - ONNX: `python uygulama\ortak\onnx_disa_aktar.py --model baran_P02_medicalnet --varyant resnet18 --ckpt <pth>`.
 
 ## Yapılacaklar
-- [ ] `calistir.py`: ısınma (dondur) → çöz iki aşamalı eğitim sarmalayıcısı.
+- [x] ~~`calistir.py` ısınma→çöz sarmalayıcısı~~ → `egit.py --isinma N` ile çözüldü (25.10.2026); ayrı dosya gerekmedi. Gövde ilk N epoch donuk (yalnız baş + BN, 0.01M/32.99M parametre), sonra `coz()` çağrılıyor. Koşu adına `_isN` girer, kayda `ayar.isinma` yazılır.
 - [ ] Ağırlık SHA-256 kaydı ve 8/23 küme içerik notu.
 - [ ] (i)/(ii)/(iii) × 5 kat × 3 tohum; kazancı kat×tohum eşleştirilmiş farkla raporla.

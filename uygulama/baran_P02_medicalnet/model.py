@@ -91,7 +91,9 @@ def olustur(varyant: str = "resnet18", sinif_sayisi: int = 2, girdi_boyut: int =
         if agirlik:                                        # yerel MedicalNet dosyası (ör. 8 kümeli resnet_18.pth)
             medicalnet_yukle(govde, agirlik)
     model = MedicalNetSiniflayici(govde, OZNITELIK[derinlik], sinif_sayisi, dropout)
-    if dondur and agirlik:                                 # ilk epoch'larda yalnız baş + BN (hakem notu 12.3/6)
+    if dondur:                                             # ilk epoch'larda yalnız baş + BN (hakem notu 12.3/6)
+        # Not: dondurmanın anlamlı olup olmadığına (ön eğitimli ağırlık var mı) egit.py karar verir;
+        # burada ikinci bir kapı koymak mekanizmayı test edilemez hale getiriyordu.
         for ad, p in model.govde.named_parameters():
             p.requires_grad = ("bn" in ad) or ("downsample.1" in ad)
     return model

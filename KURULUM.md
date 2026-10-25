@@ -9,20 +9,52 @@ Bu klasör taşınabilir bir pakettir: olduğu gibi kendi PC'ne kopyala (veya zi
 | **GPU yok** | Yol B: CPU torch yalnızca kod testi + ön işleme; eğitim **Kaggle** (haftalık ~30 GPU-saat, P100/T4) veya **Colab** (T4) |
 | Bilmiyorsan | `dxdiag` → Display sekmesi; veya PowerShell: `Get-CimInstance Win32_VideoController | Select Name` |
 
-## 0b. Baran'ın PC'si: NVIDIA GeForce RTX 3050 Laptop GPU (+ Intel UHD) — 25.10.2026
-`nvidia-smi` ile VRAM'i teyit et (dizüstü 3050 çoğunlukla **4 GB**, bazı 2024 modelleri 6 GB). Sürücü sütununda CUDA 12.x görünmeli; eski sürücüde https://www.nvidia.com/drivers üzerinden güncelle.
+## 0b. Baran'ın PC'si: RTX 3050 Laptop — **ÖLÇÜLDÜ** (25.10.2026)
+Teyit edildi: **4,0 GB VRAM**, sürücü **610.78**, `torch 2.14.1+cu126`, `torch.cuda.is_available() → True`.
+Aşağıdaki tablo artık tahmin değil; `uygulama\ortak\vram_olc.py` ile her kombinasyon gerçekten bir ileri +
+bir geri geçişle denenip tepe VRAM okunarak üretildi. Kendi kartında tekrar üretmek için:
+```powershell
+python uygulama\ortak\vram_olc.py --boyutlar 96 128 --batchlar 1 2 4 --md
+```
+
+### Ölçülen eğitim VRAM'i (AMP açık, tepe değer)
+| Model | 128³ batch 4 | 128³ batch 2 | 96³ batch 4 | Parametre |
+|---|---|---|---|---|
+| `ortak:sigcnn` (temel çizgi) | **0,56 GB** | 0,29 GB | 0,25 GB | 0,07M |
+| `baran_P01_korolev:voxcnn` | **0,65 GB** | 0,34 GB | 0,30 GB | 0,38M |
+| `baran_P01_korolev:resnet` (VoxResNet) | **3,59 GB** | 1,82 GB | 1,54 GB | 3,21M |
+| `baran_P02_medicalnet:resnet18` | **1,58 GB** | 1,17 GB | 0,52 GB | 32,99M |
+
+**Tahminin yanlış çıktığı yer:** bu tabloda önce "ResNet-18 128³ **sığmaz**, tahmini 8–12 GB" yazıyordu.
+Gerçek değer **1,58 GB** — on kat fazla tahmin edilmiş. Parametre sayısı (33M) yanıltıcı: 3B ağlarda VRAM'i
+belirleyen şey ağırlıklar değil **ara aktivasyonlar**, onlar da kanal sayısı ve uzamsal boyutla büyüyor.
+VoxResNet 3,21M parametreyle ResNet-18'den (32,99M) iki kat fazla VRAM yiyor, sebebi bu.
+
+**Sonuç: dördü de 128³ batch 4'te bu karta sığıyor.** En ağırı VoxResNet, 3,59 GB (4 GB'ın içinde ama payı az;
+başka bir şey VRAM yerse `--batch 2 --accum 2` ile aynı etkin batch'e inilir).
+
+⚠ **VoxCNN batch 1 ile eğitilemez.** Başlığındaki `BatchNorm1d` tek örnekle `ValueError` atar
+("Expected more than 1 value per channel"). Bellek sıkışırsa `--batch 1` yerine `--batch 2 --accum 2` kullan.
+Ölçümde bu iki kombinasyon `HATA: ValueError` olarak göründü, OOM değil.
 
 | Ne | 4 GB VRAM'de | Not |
 |---|---|---|
-| Duman testleri (`test_model.py`, `test_onisle.py`) | ✅ | CPU'da da koşar |
-| HD-BET kafatası ayıklama | ✅ `--cihaz 0` (GPU, ~10 sn/hacim) | VRAM yetmezse `--cihaz cpu --disable_tta` |
-| N4 + MNI kayıt | CPU işi | GPU'dan bağımsız |
-| VoxCNN / VoxResNet (P01) eğitimi | ✅ 96³, batch 2, AMP; 128³ batch 1 sınırda | `--boyut 96 --batch 2 --accum 2`; **VoxCNN'in valid konvolüsyonu ≥100³ ister** — 96³'te model otomatik padding=1'e düşer (makaleden sapma, uyarı basar). VoxResNet her boyutta sorunsuz |
-| ResNet-18 MedicalNet (P02) | ⚠ 96³ batch 1–2 AMP; 128³ **sığmaz** (tahmini 8–12 GB) | geliştirme/ablation için 96³ |
-| DenseNet121, ResAttNet, FCN-yama | ❌ 128³'te sığmaz | Kaggle/Colab |
-| **Tam protokol (6 model × 5 kat × 3 tohum, 128³)** | ❌ | **Kaggle P100 16 GB / T4** — §6 |
+| Duman testleri (`test_model.py`, `test_onisle.py`, `saglik_testi.py`) | ✅ | CPU'da da koşar |
+| HD-BET kafatası ayıklama | ✅ `--cihaz 0` | CPU'da ölçülen: **141 sn/hacim**; GPU bunu ~10 sn'ye indiriyor |
+| N4 + MNI kayıt | CPU işi (ölçülen: N4 9 sn, kayıt 17 sn) | GPU'dan bağımsız |
+| VoxCNN (P01) eğitimi | ✅ 128³ batch 4 (0,65 GB) | **valid konvolüsyon ≥100³ ister** — 96³'te padding=1'e düşer (makaleden sapma, uyarı basar). **batch 1 çalışmaz** |
+| VoxResNet (P01) eğitimi | ✅ 128³ batch 4 (3,59 GB) | en ağır model; sıkışırsa `--batch 2 --accum 2` |
+| ResNet-18 MedicalNet (P02) | ✅ 128³ batch 4 (1,58 GB) | eski "sığmaz" notu **yanlıştı**, ölçüldü |
+| DenseNet121, ResAttNet, FCN-yama | ❓ henüz ölçülmedi | `model.py`'leri yazılınca `vram_olc.py --modeller` ile ölçülecek — tahmin yürütmeyin |
+| **Baran'ın 4 modeli, 128³** | ✅ yerelde koşabilir | Kaggle gerekmiyor; süre hesabı `karsilastirma/KOSU-PLANI.md` |
 
-Kural: PROTOKOL madde 3 gereği **tabloya giren** sonuçlar herkeste aynı boyutla (128³) ve aynı donanım sınıfında (Kaggle/Colab 16 GB) üretilir; RTX 3050 yalnız kod geliştirme, hata ayıklama ve hızlı ön deney içindir. Yerel koşularda `karsilastirma/kosu_kayitlari` JSON'unda `gpu` alanı "RTX 3050" görünen satırlar SONUCLAR tablosuna girmez.
+Kural (şimdilik değişmedi): **tabloya giren** sonuçlar herkeste aynı boyutla (128³) ve aynı donanım
+sınıfında üretilir; `kosu_kayitlari` JSON'unda `gpu` alanı "RTX 3050" görünen satırları `tablo_uret.py`
+otomatik ayıklar. **Ama gerekçesi değişti:** kural "3050'ye sığmıyor" diye konmuştu, ölçüm bunu çürüttü —
+dördü de sığıyor. Geriye kalan tek gerekçe karşılaştırılabilirlik (süre ve VRAM sütunları farklı kartlarda
+anlamsızlaşır, GPU belirsizliği mimariye göre değişir). Bu bir **ekip/danışman kararı**: 3050'de üretilen
+sonuçlar tabloya kabul edilecekse `tablo_uret.py` içindeki `GELISTIRME_GPU` listesi boşaltılır ve bütün
+koşular tek kartta üretilir. Karar verilene kadar yerel koşular prova sayılır.
 
 Kurulum (Yol A, CUDA tekerleği — **cu124 DEĞİL**, aşağıdaki §2 tuzağını oku):
 ```powershell

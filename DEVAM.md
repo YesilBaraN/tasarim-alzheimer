@@ -87,7 +87,7 @@ Not: sentetik verideki 1.000'ler hattın çalıştığını gösterir, model ba�
 2b. ✅ **Baran — bitti:** Git deposu + GitHub + CI (https://github.com/YesilBaraN/tasarim-alzheimer, public). Koşu kayıtlarına commit hash'i düşüyor, `tablo_uret.py` artık kayıtları kabul ediyor. CI her push'ta Windows+Linux'ta hattın tamamını koşuyor.
 3. **Baran:** OASIS-1 gelince `onisle.py --toplu` → `bolme.py etiket-oasis` + `bol` + `dogrula` → P01/P02 ilk koşu → `karsilastirma/SONUCLAR.md`.
 4. Ara Rapor 2'yi `BSM401_Sablon_201611.docx` biçiminde Word'e dökmek (docx skill; şablonu bölüm sitesinden indir) — literatür paragrafları P01–P15 notlarından.
-5. P02 `calistir.py`: ısınma (gövde dondurulmuş) → `coz()` iki aşamalı eğitim sarmalayıcısı — `egit.py` tek aşamalı. (P01'in makale optimizer'ı ve `tablo_uret.py` tamamlandı.)
+5. ✅ **Bitti:** P02 iki aşamalı eğitim `egit.py --isinma N` ile geldi; P01'in makale optimizer'ı `--optimizer`, `tablo_uret.py` ve ısı haritası (`api/isi_haritasi.py`) da tamamlandı.
 6. ADNI gelince aynı hattı ADNI1'de koş (`KOSU-PLANI.md` T0→T1); dış test `dis_test.py` ile OASIS-1.
 7. Gerçek MRI ile ilk koşuda denenmemiş iki adım: HD-BET kafatası ayıklama ve MNI152 afin kayıt (sentetik testte atlanıyor). İlk 5 hacimde `--nii` ile çıktıyı görsel kontrol et, `_toplu_ozet.json` uyarılarına bak.
 8. GPU: venv'de CPU torch var; `KURULUM.md §2` Yol A (cu126) ile yeniden kur ve `torch.cuda.is_available()` teyit et.
