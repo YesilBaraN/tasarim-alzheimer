@@ -97,7 +97,7 @@ def kos(set_adi: str, gorev: str, kat: int, tohum: int, veri_kok: str, C: float,
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--set", required=True)
-    p.add_argument("--gorev", choices=["ikili", "uc"], default="ikili")
+    p.add_argument("--gorev", choices=["ikili", "ikili-mci", "uc"], default="ikili")
     p.add_argument("--kat", type=int, default=0)
     p.add_argument("--tum_katlar", action="store_true")
     p.add_argument("--tohum", type=int, default=2026, help="SVM deterministik; tohum yalnız kayıt adı için")
