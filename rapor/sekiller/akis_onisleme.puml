@@ -1,0 +1,66 @@
+@startuml akis_onisleme
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam roundCorner 8
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam ArrowColor #2B6CB0
+skinparam ArrowThickness 1.5
+
+header BSM 401 Bilgisayar Mühendisliği Tasarımı - Ara Rapor 2
+title 3B Derin Öğrenme Tabanlı Alzheimer Karar Destek Sistemi - Ön İşleme Akış Diyagramı (§4.4)
+
+start
+:Ham 3B sMRI Taraması Girişi\n(DICOM Klasörü veya .nii / .nii.gz);
+
+if (Dosya formatı DICOM mu?) then (evet)
+    :dcm2niix Aracı ile NIfTI Formatına Dönüştür;
+else (hayır)
+    :NIfTI Dosyasını Doğrudan Yükle (nibabel / SimpleITK);
+endif
+
+:Görüntü Boyutları ve Voksel Boşluklarını Kontrol Et (QA-1);
+
+partition "Adım 1: Kafatası Ayıklama (Skull Stripping)" #EBF8FF {
+    :Önceden Eğitilmiş HD-BET Sinir Ağını Çalıştır;
+    :Beyin Parankim Maskesini (Binary Mask) Üret;
+    :Görüntüyü Maske ile Çarparak Kafatası ve Beyin Dışı Dokuları Ayıkla;
+}
+
+partition "Adım 2: Manyetik Homojensizlik Düzeltmesi" #FEFCBF {
+    :SimpleITK N4BiasFieldCorrectionFiltresini Uygula;
+    :Düşük Frekanslı Yoğunluk Sapmalarını (B1 Alan Bozulması) Düzelt;
+}
+
+partition "Adım 3: Yoğunluk Normalizasyonu" #FEEBC8 {
+    :Yalnızca Beyin Vokselleri Üzerinde Ortalama ve Standart Sapma Hesapla;
+    :Robust Z-Skor Dönüşümü Uygula: z = (x - mean) / std;
+    :Aykırı Değerleri Kırp (Clip outliers: [-2.5, +2.5]);
+    :Değer Aralığını [0, 1] Ölçeğine Getir;
+}
+
+partition "Adım 4: Standart Anatomik Şablona Kayıtlama" #E6FFFA {
+    :SimpleITK İle MNI152 Doğrusal Olmayan Simetrik Şablonu Yükle;
+    :Afin (Affine) Dönüşüm Matrisini Hesapla (12 Serbestlik Derecesi);
+    :Görüntüyü 1 mm³ İzotropik MNI152 Koordinat Uzayına Yeniden Örnekle;
+}
+
+partition "Adım 5: Kübik Tensör Kırpma ve Kaydetme" #EDF2F7 {
+    :MNI Uzayındaki Beyin Bölgesini 128x128x128 Matris Boyutuna Kırp / Ölçekle;
+    :Veri Tipini float16 Olarak Sıkıştır (Disk ve Bellek Tasarrufu);
+    :Standart Çıktı Dosyasını Kaydet (<tarama_id>_128cube.npy);
+}
+
+:Kalite Kontrolü Yap (Voksel Yoğunluk Dağılımı & Boyut Doğrulama QA-2);
+
+if (Ön işleme başarılı mı?) then (evet)
+    :İşlenmiş Tensörü Model/Tahmin Katmanına İlet;
+    stop
+else (hayır)
+    :Hata Günlüğü Oluştur (QA-Fail Log);
+    :Kullanıcıya / Sisteme Hata Bildirimi Gönder;
+    end
+endif
+
+@enduml

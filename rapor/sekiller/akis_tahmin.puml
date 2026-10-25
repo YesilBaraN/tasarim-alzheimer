@@ -1,0 +1,66 @@
+@startuml akis_tahmin
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam roundCorner 8
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam ArrowColor #2B6CB0
+skinparam ArrowThickness 1.5
+
+header BSM 401 Bilgisayar Mühendisliği Tasarımı - Ara Rapor 2
+title 3B Derin Öğrenme Tabanlı Alzheimer Karar Destek Sistemi - Klinik Çıkarım ve Tahmin Akış Diyagramı (§4.4)
+
+start
+:Radyolog Hekim Web Arayüzünden (E1/E2)\n3B sMRI Dosyası Yükler (.nii.gz / DICOM);
+
+:FastAPI Servis Katmanına İstek Gönderilir\n(POST /tahmin multipart/form-data);
+
+partition "Aşama 1: Dosya Doğrulama ve Ön İşleme" #EBF8FF {
+    :Dosya Bütünlüğü ve SHA-256 Özeti Çıkarılır;
+    if (Geçerli T1-Ağırlıklı Beyin MR'ı mı?) then (evet)
+        :Hızlı Ön İşleme Motorunu Çalıştır (HD-BET + N4 + MNI Afin);
+        :128x128x128 Boyutlu float16 Tensörünü Üret;
+    else (hayır)
+        :400 Hatalı İstek: 'Geçersiz dosya formatı' Yanıtı Dön;
+        stop
+    endif
+}
+
+partition "Aşama 2: ONNX Runtime Model Çıkarımı" #FEFCBF {
+    :Ön İşlenmiş Tensörü ONNX Çıkarım Motoruna Aktar (model.onnx);
+    :İleri Geçiş Yapılarak Çıkış Lojitleri Hesaplanır;
+    :Softmax Fonksiyonu ile Sınıf Olasılıkları Çıkarılır:\n[P(NC), P(MCI), P(AD)];
+    :Nihai Klinik Karar ve Güven Skoru Belirlenir;
+}
+
+partition "Aşama 3: Açıklanabilir Yapay Zeka (XAI) Isı Haritası" #FEEBC8 {
+    if (Seçili Model XAI Türü Nedir?) then (Grad-CAM)
+        :3B Grad-CAM ile Son Evrişim Katmanı Gradyanlarını Hesapla;
+    else (LRP / DPM)
+        :Katman Bazlı İlgi Yayılımı (LRP β=0) veya DPM Haritası Üret;
+    endif
+    
+    :Isı Haritasını Trilinear Enterpolasyonla 128³ Hacme Büyüt;
+    :Beyin Şablonu Üzerinde En Yüksek İlgiye Sahip Anatomik Bölgeyi Saptar\n(Örn. 'Bilateral Hipokampus ve Medial Temporal Lob');
+    :3 Dik Düzlemde (Aksiyel, Koronal, Sagital) Bindirilmiş PNG Dilimlerini Üret;
+}
+
+partition "Aşama 4: Veritabanı ve Güvenlik Kaydı" #EDF2F7 {
+    :Anonimleştirilmiş Meta Verileri ve Tahmin Sonucunu Veritabanına Yaz\n(Kullanıcı, Tarama, Tahmin, Olasılıklar, Zaman);
+    :Ham MRI Görüntüsü DUA Uyarınca Bellekten Temizlenir;
+}
+
+partition "Aşama 5: Web Arayüzü Sunumu ve Raporlama (E3 - E7)" #E6FFFA {
+    :Sonuç JSON Paketi Web Arayüzüne İletilir;
+    :Tahmin Göstergeleri, Olasılık Çubukları ve Güven Skoru Çizilir;
+    :İnteraktif 3B Dilim Gezgini ile Isı Haritası Görüntülenir;
+    :YASAL KLİNİK UYARI Ekranın Altında Vurgulanır:\n"⚠️ Bu sistem bir karar destek aracıdır; tek başına tanı yerine geçmez.";
+    
+    if (Radyolog PDF Rapor Talep Etti mi?) then (evet)
+        :Klinik Bulguları, Dilim Görsellerini ve Hekim Notunu İçeren\nResmî Karar Destek PDF Raporu İndirilir (E7);
+    endif
+}
+
+stop
+@enduml

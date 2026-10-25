@@ -1,0 +1,112 @@
+@startuml er
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam roundCorner 8
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam ArrowColor #2B6CB0
+skinparam ArrowThickness 1.5
+
+header BSM 401 Bilgisayar Mühendisliği Tasarımı - Ara Rapor 2
+title 3B Derin Öğrenme Tabanlı Alzheimer Karar Destek Sistemi - Veritabanı Varlık-İlişki (ER) Şeması (§4.2)
+
+entity "Kullanici" as User {
+    * **kullanici_id** : UUID [PK]
+    --
+    * ad : VARCHAR(100)
+    * e_posta : VARCHAR(150) [UNIQUE]
+    * rol : ENUM('Radyolog', 'Arastirmaci', 'Yonetici')
+    * parola_hash : VARCHAR(255)
+    * aktif : BOOLEAN
+    * olusturma_tarihi : TIMESTAMP
+}
+
+entity "Tarama" as Scan {
+    * **tarama_id** : UUID [PK]
+    --
+    * kaynak : ENUM('ADNI1', 'ADNI2', 'OASIS1', 'Klinik')
+    * dis_kimlik : VARCHAR(64) <color:#718096>(Anonim RID)</color>
+    cekim_tarihi : DATE
+    alan_gucu : ENUM('1.5T', '3.0T')
+    * dosya_hash : VARCHAR(64) <color:#718096>(SHA-256 bütünlük)</color>
+    ham_dosya_yolu : VARCHAR(512)
+    * yuklenme_tarihi : TIMESTAMP
+}
+
+entity "OnIsleme" as Preproc {
+    * **onisleme_id** : UUID [PK]
+    --
+    * **tarama_id** : UUID [FK]
+    * boru_hatti_surumu : VARCHAR(20)
+    kafatasi_arac : VARCHAR(50) <color:#718096>(HD-BET)</color>
+    n4_duzeltme : BOOLEAN
+    normalizasyon : VARCHAR(50) <color:#718096>(Robust Z-Score)</color>
+    kayit_sablonu : VARCHAR(50) <color:#718096>(MNI152 afin)</color>
+    cikti_boyutu : VARCHAR(30) <color:#718096>(128x128x128)</color>
+    islenmis_npy_yolu : VARCHAR(512)
+    sure_saniye : FLOAT
+    durum : ENUM('Basarili', 'Hatali', 'DevamEdiyor')
+    islem_tarihi : TIMESTAMP
+}
+
+entity "Model" as Model {
+    * **model_id** : UUID [PK]
+    --
+    * kod : VARCHAR(20) <color:#718096>(P01, P02, P06, P07, P11, P12)</color>
+    * ad : VARCHAR(100)
+    * mimari_tipi : VARCHAR(50)
+    * gorev_tipi : ENUM('Ikili_AD_NC', 'Uc_Sinif_AD_MCI_NC')
+    * egitim_veri : VARCHAR(100)
+    * protokol_surumu : VARCHAR(20)
+    * onnx_dosya_yolu : VARCHAR(512)
+    test_bacc : FLOAT
+    test_auc : FLOAT
+    test_f1 : FLOAT
+    egitim_tarihi : TIMESTAMP
+    aktif_canli_model : BOOLEAN
+}
+
+entity "Tahmin" as Prediction {
+    * **tahmin_id** : UUID [PK]
+    --
+    * **tarama_id** : UUID [FK]
+    * **model_id** : UUID [FK]
+    * **kullanici_id** : UUID [FK]
+    * ad_olasilik : FLOAT
+    * mci_olasilik : FLOAT
+    * nc_olasilik : FLOAT
+    * nihai_karar : ENUM('AD', 'MCI', 'NC')
+    * guven_skoru : FLOAT
+    * cikarim_suresi_ms : INTEGER
+    klinisyen_notu : TEXT
+    tahmin_tarihi : TIMESTAMP
+}
+
+entity "AciklamaHaritasi" as XAIMap {
+    * **harita_id** : UUID [PK]
+    --
+    * **tahmin_id** : UUID [FK]
+    * yontem : ENUM('GradCAM_3D', 'LRP_Beta0', 'DPM_Risk')
+    * katman_adi : VARCHAR(100)
+    * harita_nii_yolu : VARCHAR(512)
+    * overlay_png_yolu : VARCHAR(512)
+    en_yuksek_ilgi_bolgesi : VARCHAR(100) <color:#718096>(Örn. Sol Hipokampus)</color>
+    biyobelirtec_skoru : FLOAT
+    olusturma_tarihi : TIMESTAMP
+}
+
+User ||--o{ Prediction : "yapar / inceler"
+Scan ||--|| Preproc : "işlenir (1-e-1)"
+Scan ||--o{ Prediction : "tahmin üretilir"
+Model ||--o{ Prediction : "çıkarsama yapar"
+Prediction ||--o{ XAIMap : "açıklama haritası üretir"
+
+note bottom of Scan
+  ⚠️ ADNI/OASIS Veri Kullanım Sözleşmesi (DUA)
+  gereği ham tıbbi görüntüler veritabanında
+  saklanmaz; sunucuda yalnız anonimleştirilmiş
+  meta veriler ve SHA-256 özetleri tutulur.
+end note
+
+@enduml
