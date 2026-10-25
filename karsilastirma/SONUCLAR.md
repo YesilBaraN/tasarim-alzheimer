@@ -65,9 +65,31 @@ raporlanıyor.
 (aynı satırlar + her model için karışıklık matrisi `karsilastirma/cm/<model>.png`)
 
 ## D) Ablation'lar
+
+### D1) Ön eğitim ne kazandırıyor? — kat 0 ölçümü
+| | Doğrulama BAcc | Doğrulama AUC | Test BAcc | Test AUC | **Doğrulama → test boşluğu** |
+|---|---|---|---|---|---|
+| P02 ResNet-18 **sıfırdan** | **0,841** | **0,854** | 0,620 | 0,738 | **0,221** |
+| P02 ResNet-18 **MedicalNet** | 0,706 | 0,705 | **0,700** | **0,758** | **0,006** |
+
+**Sıfırdan eğitilen model doğrulamada daha iyi, test'te daha kötü.** Bu klasik aşırı öğrenme
+imzası: 236 eğitim deneğiyle 33M parametreli bir ağ eğitim katını ezberliyor. Ön eğitimin
+kazandırdığı şey **tepe başarı değil genelleme** — Chen 2019'un (MedicalNet) iddiası tam olarak bu.
+
+Neden boşluğa bakıyoruz: test farkı (0,700 vs 0,620) 53 deneklik tek bir kümeden geliyor ve
+gürültülü. Doğrulama → test boşluğu ise **her koşunun kendi içinde** ölçülen bir büyüklük;
+0,006'ya karşı 0,221 farkı tek koşuda bile anlamlı bir işaret. 5 kat bitince ikisi de ± ile verilecek.
+
+⚠ **Buradan çıkan metodolojik uyarı.** Model seçimi doğrulama üstünden yapılırsa (PROTOKOL
+madde 7, hiperparametre seçimi için doğru), doğrulama **aşırı öğrenen** yapılandırmayı
+ödüllendirebiliyor: burada sıfırdan eğitilen koşu doğrulamada kazanıyor ama test'te kaybediyor.
+Bu yüzden *hiperparametre* seçimi doğrulamada kalır, ama *mimari karşılaştırması* kilitli test
+üstünden yapılır ve `tablo_uret.py` bu ayrımı koruyor. 5 kat ortalaması bu yanlılığı azaltıyor.
+
+### D2) Diğer ablation'lar
 | Soru | Karşılaştırma | Sonuç |
 |---|---|---|
-| Ön eğitim ne kazandırıyor? | P02 sıfırdan vs MedicalNet | |
+| Ön eğitim ne kazandırıyor? | P02 sıfırdan vs MedicalNet | **genelleme** — aşağıya bakın (kat 0, tek koşu) |
 | Artık bağlantı ne kazandırıyor? | P01 VoxCNN vs VoxResNet | |
 | Dikkat ne kazandırıyor? | P07 öz-dikkat var/yok | |
 | Derin model sığ CNN'i geçiyor mu? | hepsi vs SigCNN3D | |
