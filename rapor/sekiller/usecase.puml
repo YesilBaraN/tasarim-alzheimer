@@ -1,0 +1,67 @@
+@startuml
+skinparam actorStyle awesome
+skinparam packageStyle rectangle
+skinparam roundcorner 10
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+title Alzheimer 3B-DL Karar Destek Sistemi - Kullanım Senaryosu (Use-Case) Diyagramı
+
+left to right direction
+
+actor "Radyolog / Klinisyen\n(Birincil Kullanıcı)" as Radyolog #LightBlue
+actor "Araştırmacı / Geliştirici\n(Model Uzmanı)" as Arastirmaci #LightGreen
+actor "Sistem Yöneticisi\n(Admin)" as Yonetici #LightYellow
+
+rectangle "Alzheimer 3B Derin Öğrenme Karar Destek Sistemi" {
+  
+  package "Klinik Karar Destek İşlevleri" {
+    usecase "UC-1: MRI Yükle ve\nTahmin Al" as UC1
+    usecase "UC-1.1: Otomatik Ön İşleme\n(HD-BET + N4 + MNI152)" as UC1_1
+    usecase "UC-1.2: Voksel Kalite Kontrolü\n(Oryantasyon & Boyut)" as UC1_2
+    usecase "UC-2: Açıklanabilirlik\nHaritasını İncele (XAI)" as UC2
+    usecase "UC-2.1: 3 Eksenli Dilim Gezinimi\n(Aksiyel, Koronal, Sagital)" as UC2_1
+    usecase "UC-2.2: LRP / Grad-CAM\nŞeffaflık & Eşik Ayarı" as UC2_2
+    usecase "UC-3: Karar Destek\nRaporu Üret (PDF)" as UC3
+  }
+
+  package "Model Geliştirme & Araştırma İşlevleri" {
+    usecase "UC-4: Modelleri Eğit ve\nKarşılaştır (6 Model)" as UC4
+    usecase "UC-4.1: Çapraz Doğrulama\n(5-Kat RID Düzeyi)" as UC4_1
+    usecase "UC-4.2: Metrik & ROC Analizi\n(SONUCLAR.md Üretimi)" as UC4_2
+    usecase "UC-5: Modeli Dışa Aktar\nve Yayınla (ONNX / API)" as UC5
+  }
+
+  package "Sistem & Kullanıcı Yönetimi" {
+    usecase "UC-6: Kullanıcı ve\nRol Yönetimi" as UC6
+    usecase "UC-6.1: Sistem Sağlığı ve\nLog İzleme" as UC6_1
+  }
+}
+
+' Radyolog ilişkileri
+Radyolog --> UC1
+Radyolog --> UC2
+Radyolog --> UC3
+
+' UC-1 iç ilişkileri
+UC1 ..> UC1_1 : <<include>>
+UC1 ..> UC1_2 : <<include>>
+
+' UC-2 ve UC-3 uzantı ilişkileri
+UC2 .> UC1 : <<extend>>
+UC2 ..> UC2_1 : <<include>>
+UC2 ..> UC2_2 : <<include>>
+UC3 .> UC1 : <<extend>>
+
+' Araştırmacı ilişkileri
+Arastirmaci --> UC4
+Arastirmaci --> UC5
+UC4 ..> UC4_1 : <<include>>
+UC4 ..> UC4_2 : <<include>>
+UC5 .> UC4 : <<extend>>
+
+' Yönetici ilişkileri
+Yonetici --> UC6
+Yonetici --> UC6_1
+
+@enduml

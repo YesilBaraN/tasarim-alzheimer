@@ -90,8 +90,8 @@ Rapor bölümleri: Giriş (Baran) · Literatür (herkes, kendi 5'i) · Gereksini
 | 1 | Konu formu | ekip | ✅ bitti | 24.10 | form Baran.Deneme'de |
 | 2 | 15 makale seçimi + gruplama | Baran (Claude) | ✅ bitti | 25.10 | `makaleler/MAKALE-LISTESI.md` |
 | 3 | P01–P05 inceleme (AI + Opus doğrulama) | Baran (Claude) | ✅ bitti (insan okuması ☐) | 25.10 | `makaleler/baran/` 5 not, §13 doğrulamalı; P03 PDF'den okundu |
-| 4 | P06–P10 inceleme | Görkem | ☐ başlamadı | — | `devir/DEVIR-GORKEM.md` |
-| 5 | P11–P15 inceleme | Ertuğrul | ☐ başlamadı | — | `devir/DEVIR-ERTUGRUL.md` |
+| 4 | P06–P10 inceleme | Görkem | ✅ bitti (AI + Opus doğrulandı) | 25.10 | `makaleler/gorkem/` 5 not, §13 doğrulamalı; `KARSILASTIRMA-15.md` güncel |
+| 5 | P11–P15 inceleme | Ertuğrul | ✅ bitti (AI + Opus doğrulandı) | 25.10 | `makaleler/ertugrul/` 5 not, §13 doğrulamalı; `KARSILASTIRMA-15.md` güncel |
 | 6 | ADNI başvurusu | Baran + danışman | ☐ başlamadı | — | e-posta taslağı §8 |
 | 7 | OASIS-1 erişim isteği (**her üye kendi adına**, kurumsal e-posta + araştırma açıklaması) | herkes | ☐ başlamadı | — | https://sites.wustl.edu/oasisbrains/home/access/ · DUA paylaşımı yasaklar |
 | 7b | ADNI'ye Baran'ın kendi başvurusu (danışmanınkiyle paralel) + OpenNeuro ds007561 kontrolü + IXI indirme (kod testi) | Baran | ☐ başlamadı | — | `veri/VERI-SETI.md §2b` |
@@ -99,13 +99,13 @@ Rapor bölümleri: Giriş (Baran) · Literatür (herkes, kendi 5'i) · Gereksini
 | 8b | Git deposu + GitHub + CI | Baran | ✅ bitti | 25.10 | https://github.com/YesilBaraN/tasarim-alzheimer (public) · her push'ta Windows+Linux uçtan uca test, iki koşu da yeşil · koşu kayıtlarına commit hash'i düşüyor |
 | 9 | Ön işleme hattı (OASIS-1'de) | Baran | ☐ kod hazır, **duman testi yeşil** (sentetik) | 25.10 | `onisleme/onisle.py` · gerçek MRI, HD-BET ve MNI kaydı henüz denenmedi |
 | 10 | PROTOKOL + ortak eğitim kodu | Baran | ✅ kod hazır ve **uçtan uca koştu** (7 denetim + 4 çalışma zamanı hatası düzeltildi) | 25.10 | `uygulama/ortak/` · düzeltmeler ve doğrulama tablosu `DEVAM.md` |
-| 11 | Gereksinim analizi + use-case | Görkem | ☐ taslak var | 25.10 | `rapor/ARA-RAPOR-2-TASLAK.md §3` |
-| 12 | Mimari blok + ER + akış diyagramları | Ertuğrul | ☐ taslak var | 25.10 | `rapor/ARA-RAPOR-2-TASLAK.md §4` |
-| 13 | Arayüz mock-up'ları | Görkem | ☐ başlamadı | — | §4.3 ekran listesi |
+| 11 | Gereksinim analizi + use-case | Görkem | ✅ bitti | 25.10 | `rapor/ARA-RAPOR-2-TASLAK.md §3` · PlantUML: `rapor/sekiller/usecase.puml` |
+| 12 | Mimari blok + ER + akış diyagramları | Ertuğrul | ✅ bitti | 25.10 | `rapor/sekiller/`: mimari.puml, er.puml, akis_onisleme.puml, akis_egitim.puml, akis_tahmin.puml |
+| 13 | Arayüz mock-up'ları | Görkem | ✅ bitti | 25.10 | `rapor/sekiller/mockups_spec.md` (E1–E7 ekranları + yasal uyarı) |
 | 14 | Ara Rapor 2 birleştirme | Baran | ☐ başlamadı | — | BSM401 şablonu |
 | 15 | Baran implementasyonu P01, P02 | Baran | ☐ iskelet hazır | 25.10 | `uygulama/baran_*` |
-| 16 | Görkem implementasyonu P06, P07 | Görkem | ☐ başlamadı | — | |
-| 17 | Ertuğrul implementasyonu P11, P12 | Ertuğrul | ☐ başlamadı | — | |
+| 16 | Görkem implementasyonu P06, P07 | Görkem | ✅ kodlandı | 25.10 | `uygulama/gorkem_P06_bohle/` (model + LRP), `uygulama/gorkem_P07_resattnet/` (model + Grad-CAM) |
+| 17 | Ertuğrul implementasyonu P11, P12 | Ertuğrul | ✅ kodlandı | 25.10 | `uygulama/ertugrul_P11_qiu_fcn/` (model + harita), `uygulama/ertugrul_P12_densenet/` (DenseNet121 + TinyDenseNet) |
 | 18 | Karşılaştırma tablosu | ekip | ☐ şablon + üreteci hazır | 25.10 | `karsilastirma/SONUCLAR.md` · üreteç `tablo_uret.py` (protokole uymayan koşuyu ayıklar) |
 | 18b | Koşu planı / GPU bütçesi | Baran | ✅ plan hazır, danışman onayı bekliyor | 25.10 | `karsilastirma/KOSU-PLANI.md` · §7 soru 7 |
 | 18c | Sağlık testleri (PROTOKOL K5) | Baran | ✅ koştu, yeşil | 25.10 | `uygulama/ortak/saglik_testi.py` — ayrılabilir 1.000 / rastgele 0.500 |
