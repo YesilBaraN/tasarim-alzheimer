@@ -33,6 +33,10 @@ VoxResNet 3,21M parametreyle ResNet-18'den (32,99M) iki kat fazla VRAM yiyor, se
 **Sonuç: dördü de 128³ batch 4'te bu karta sığıyor.** En ağırı VoxResNet, 3,59 GB (4 GB'ın içinde ama payı az;
 başka bir şey VRAM yerse `--batch 2 --accum 2` ile aynı etkin batch'e inilir).
 
+⚠ **ResAttNet ve FCN batch 4'te 4 GB'ı aşıyor.** Ölçüm `OK` diyor çünkü Windows'ta CUDA, yetmeyen
+belleği sistem RAM'ine taşırıyor (WDDM paylaşılan bellek) — program çöküyor değil ama **çok yavaşlıyor**.
+Bu ikisi için `--batch 2 --accum 2` kullanın: etkin batch aynı kalır, bellek yarıya iner.
+
 ⚠ **VoxCNN batch 1 ile eğitilemez.** Başlığındaki `BatchNorm1d` tek örnekle `ValueError` atar
 ("Expected more than 1 value per channel"). Bellek sıkışırsa `--batch 1` yerine `--batch 2 --accum 2` kullan.
 Ölçümde bu iki kombinasyon `HATA: ValueError` olarak göründü, OOM değil.
@@ -45,7 +49,10 @@ başka bir şey VRAM yerse `--batch 2 --accum 2` ile aynı etkin batch'e inilir)
 | VoxCNN (P01) eğitimi | ✅ 128³ batch 4 (0,65 GB) | **valid konvolüsyon ≥100³ ister** — 96³'te padding=1'e düşer (makaleden sapma, uyarı basar). **batch 1 çalışmaz** |
 | VoxResNet (P01) eğitimi | ✅ 128³ batch 4 (3,59 GB) | en ağır model; sıkışırsa `--batch 2 --accum 2` |
 | ResNet-18 MedicalNet (P02) | ✅ 128³ batch 4 (1,58 GB) | eski "sığmaz" notu **yanlıştı**, ölçüldü |
-| DenseNet121, ResAttNet, FCN-yama | ❓ henüz ölçülmedi | `model.py`'leri yazılınca `vram_olc.py --modeller` ile ölçülecek — tahmin yürütmeyin |
+| P12 DenseNet121 (Ertuğrul) | ✅ 128³ batch 4 (1,96 GB) | ölçüldü · 11,22M parametre |
+| P11 FCN-yama (Ertuğrul) | ⚠ 128³ batch **2** (2,11 GB) | batch 4'te 4,18 GB → 4 GB'ı aşıyor, paylaşılan belleğe taşar ve yavaşlar · 1,52M parametre |
+| P07 ResAttNet (Görkem) | ⚠ 128³ batch **2** (2,87 GB) | batch 4'te **5,49 GB** → kartın çok üstünde · 34,21M parametre, en ağır model |
+| P06 CNN+LRP (Görkem) | ✅ 128³ batch 4 (0,47 GB) | ölçüldü · 0,14M parametre |
 | **Baran'ın 4 modeli, 128³** | ✅ yerelde koşabilir | Kaggle gerekmiyor; süre hesabı `karsilastirma/KOSU-PLANI.md` |
 
 Kural (şimdilik değişmedi): **tabloya giren** sonuçlar herkeste aynı boyutla (128³) ve aynı donanım

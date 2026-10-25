@@ -371,8 +371,17 @@ def hacmi_isle(girdi: Path, cikti_klasor: Path, ad: str, boyut: int = 128, kafat
     sureler["kafatasi"] = time.time() - t; meta["adimlar"].append(f"kafatasi:{kafatasi}")
     hacim_cm3 = float(sitk.GetArrayFromImage(maske).sum() * np.prod(img.GetSpacing()) / 1000.0)
     meta["maske_hacmi_cm3"] = round(hacim_cm3, 1)
-    if not (900 <= hacim_cm3 <= 1900) and kafatasi == "hdbet":
-        meta["uyarilar"].append("maske_hacmi")
+    # Beklenen hacim banti moda gore degisir ve bu ayrim onemli:
+    #  - hdbet: hacim DENEGIN KENDI kafasindan gelir, 900-1900 cm3 fizyolojik aralik.
+    #  - hazir: veri kaynakta MNI'ye 12 DOF afinle normalize edilmis, yani her beyin sablonun
+    #    kutusunu doldurur. Olculen: 2062 +- 39 cm3 (sd %1,9) ve denegin gercek ICV'siyle
+    #    korelasyon r = -0,18, yani YOK. Bu bir hata degil, afin normalizasyonun dogal sonucu;
+    #    fizyolojik bandi uygulamak 787 hacmin 787'sinde bosa uyari verirdi. Buradaki genis bant
+    #    (1500-2600) fizyoloji degil, kirpilmis/bozuk dosya yakalamak icin: sablon uzayinda hacim
+    #    neredeyse sabit oldugu icin bu banttan cikan hacim veri hatasidir.
+    BANT = (900, 1900) if kafatasi == "hdbet" else (1500, 2600)
+    if kafatasi != "yok" and not (BANT[0] <= hacim_cm3 <= BANT[1]):
+        meta["uyarilar"].append(f"maske_hacmi:{hacim_cm3:.0f}cm3_beklenen_{BANT[0]}-{BANT[1]}")
 
     if kafatasi == "hazir":
         meta["adimlar"].append("n4:atlandi")   # kaynak hattı bias düzeltmesini zaten uygulamış
