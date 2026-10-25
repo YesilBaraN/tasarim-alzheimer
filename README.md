@@ -65,6 +65,17 @@ python uygulama\ortak\saglik_testi.py
 ```
 Üçünde de `OK` satırları ve sonda `TÜM ... OK` görmelisin. Görmezsen kod değiştirmeden önce bunu çöz.
 
+### 2b. Açık veriyi indir (herkes aynı dosyaları alsın)
+```powershell
+python veri\indir.py --hedef D:\veri             # D: yoksa Desktop\veri de olur
+python veri\indir.py --hedef D:\veri --dogrula   # indirme, eldekini sına
+```
+İki CC0 veri seti iner — **ds007561** (20 denek, 284 MB) ve **ds007857** (287 denek, 2,6 GB).
+
+**Veri depoya girmez**; betik hedefi depo içinde seçersen reddeder. Sebep hukuki değil (CC0 yeniden dağıtıma izin verir), teknik: 2,9 GB ikili dosya herkesin klonunu şişirir, GitHub 1 GB üstü depolarda uyarır, Git LFS'in ücretsiz katmanı 1 GB — ve veri zaten tek komutla iniyor. Paylaştığımız şey veri değil, **onu birebir aynı indiren betik**; böylece üçümüzde de aynı dosyalar olur.
+
+ADNI ve OASIS bu betikle **inmez**: başvuru ve Data Use Agreement isterler (`veri/VERI-SETI.md §2`).
+
 ### 3. Nerede kaldığımızı oku
 `SUREC.md` → **§9 NEREDE KALDIK** tablosunda kendi satırlarını bul. Sonra `DEVAM.md` (son oturumda ne yapıldı, ne bozuktu, ne düzeltildi) ve `uygulama/PROTOKOL.md` (bağlayıcı kurallar).
 

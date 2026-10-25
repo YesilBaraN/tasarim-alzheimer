@@ -119,6 +119,14 @@ Birden çok kohort ancak şu iki biçimde kullanılır: (a) **biri eğitim, diğ
 (b) her kohort kendi içinde dengeli sınıflara sahipse ve merkez etkisi raporlanıyorsa. Sınıfları kohortlara
 bölüştürmek **asla**.
 
+### Veri indirme: `veri/indir.py`
+Açık (CC0) setleri herkesin **birebir aynı** indirmesi için tek komut:
+`python veri\indir.py --hedef D:\veri`
+
+Denek başına tek tarama seçer (ds007857'de birden çok oturum var), boyut doğrulaması yapar, yarım kalan
+dosyayı yeniden indirir, `--dogrula` ile eldekini sınar ve hedef **depo içindeyse reddeder** (veri git'e
+sızmasın). ADNI/OASIS bu betikle inmez: başvuru + DUA gerektirirler.
+
 ### Yeni araç: `bolme.py etiket-bids`
 Herhangi bir BIDS/OpenNeuro setini tek komutla etiket CSV'sine çevirir — tanı sütununu kendiliğinden bulur,
 yazım farklarını (`Control`/`CN`/`Normal`, `AD`/`DAT`/`Dementia`…) tek bir eşleme tablosundan çözer, sınıfı
