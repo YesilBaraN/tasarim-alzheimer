@@ -1,0 +1,89 @@
+{
+ "ad": "baran_P01_korolev-resnet_oasis_ikili_t2026_k0_lr3e-04_b128",
+ "model": "baran_P01_korolev",
+ "varyant": "resnet",
+ "set": "oasis",
+ "gorev": "ikili",
+ "kat": 0,
+ "tohum": 2026,
+ "lr": 0.0003,
+ "boyut": 128,
+ "etiket": "",
+ "model_notu": "",
+ "on_egitim": false,
+ "agirlik": null,
+ "ayar": {
+  "epoch": 60,
+  "lr": 0.0003,
+  "batch": 2,
+  "accum": 2,
+  "sabir": 12,
+  "wd": 0.0001,
+  "amp": true,
+  "boyut": 128,
+  "isci": 2,
+  "optimizer": "adamw",
+  "isinma": 0
+ },
+ "parametre": 3205026,
+ "cihaz": "cuda",
+ "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+ "vram_gb": 2.13,
+ "sure_sn": 1478.6,
+ "epoch_kosulan": 17,
+ "en_iyi_epoch": 4,
+ "dogrulama": {
+  "acc": 0.6610169491525424,
+  "bacc": 0.6705069124423964,
+  "f1_makro": 0.6529411764705882,
+  "cm": [
+   [
+    24,
+    4
+   ],
+   [
+    16,
+    15
+   ]
+  ],
+  "n": 59,
+  "auc": 0.6664746543778802,
+  "sens": 0.4838709677419355,
+  "spec": 0.8571428571428571
+ },
+ "test": {
+  "acc": 0.660377358490566,
+  "bacc": 0.6609686609686609,
+  "f1_makro": 0.6602564102564102,
+  "cm": [
+   [
+    18,
+    8
+   ],
+   [
+    10,
+    17
+   ]
+  ],
+  "n": 53,
+  "auc": 0.693019943019943,
+  "sens": 0.6296296296296297,
+  "spec": 0.6923076923076923
+ },
+ "commit": "51cb855",
+ "torch": "2.14.1+cu126",
+ "surumler": {
+  "python": "3.12.10",
+  "torch": "2.14.1+cu126",
+  "cuda": "12.6",
+  "cudnn": "91002",
+  "monai": "1.6.1",
+  "numpy": "2.5.2",
+  "scikit-learn": "1.9.1",
+  "pandas": "3.1.0",
+  "SimpleITK": "2.5.6",
+  "nibabel": "5.4.2",
+  "onnxruntime": "1.31.0"
+ },
+ "deterministic": true
+}
