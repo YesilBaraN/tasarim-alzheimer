@@ -85,6 +85,54 @@ Neden önemli:
 3. OASIS-1 gecikirse **MIRIAD**'a başvur (46 AD + 23 HC).
 4. AIBL onayı gelirse: iç test ADNI1, **dış test AIBL (üç sınıf dahil) + OASIS-1 (ikili)**.
 
+## 2d. OpenNeuro'nun **tamamı** tarandı (25.10.2026)
+
+Önceki turlarda OpenNeuro'ya arama motoruyla bakılmıştı. Bu sefer kovanın kendisi tarandı: her veri setinin
+`participants.tsv` dosyası indirilip demans/AD/MCI terimleri arandı (`scratchpad/openneuro_tara.sh` yöntemi).
+
+| | |
+|---|---|
+| Taranan veri seti | **2522** |
+| `participants.tsv` içeren | 1493 |
+| Demans/AD/MCI terimi geçen | 7 |
+| **Gerçek aday** | **2** (diğer 5'i yanlış pozitif) |
+
+### Adaylar
+| Set | Katılımcı | Etiketler | Görüntü | Karar |
+|---|---|---|---|---|
+| **ds007857** | 289 | **212 CN · 49 MCI · 1 DAT** · 27 n/a (+ MoCA skoru) | **559 T1w, 5,2 GB** | ⚠ AD yok (tek DAT) → ana görev için kullanılamaz. Ama indirilebilir **en büyük etiketli T1 seti**: hattı 261 denekle prova etmek ve P15 (Dhinagar 2023) usulü ön eğitim için değerli |
+| ds005048 | 35 | **16 Hafif AD · 1 Orta AD · 10 Normal · 6 MCI** | ❌ **yok** — `.set`/`.fdt` yani EEGLAB; sadece EEG | Etiketleri en iyi olan set ama MRI içermiyor → kullanılamaz |
+| ds007561 | 20 | 14 Control · 5 MCI · 1 AD | 20 T1w, 284 MB | ✅ indirildi; yalnız hat denemesi |
+
+**Yanlış pozitifler:** ds003382, ds003397, ds004796 (tanı değil, *ailede demans öyküsü* sütunu), ds005892
+(22 Control / 18 PD-NC / 15 PD-MCI — Parkinson, bizim görev değil).
+
+### Sonuç
+**Anında indirilebilen, etiketli, AD vs NC yapmaya yetecek 3B T1 veri seti OpenNeuro'da yok.** Tarama
+tamamlandığı için bu artık bir tahmin değil, ölçüm. ADNI/OASIS başvurusu **kritik yol olmaya devam ediyor.**
+
+### ⚠ "Setleri birleştirip veriyi büyütelim" — yapılmaz
+AD deneklerini bir setten, kontrolleri başka setten almak veriyi büyütmez, **sonucu geçersiz kılar**: farklı
+tarayıcı, farklı protokol, farklı merkez demek; model hastalığı değil **tarayıcıyı** öğrenir ve doğruluk
+yapay olarak yükselir. Bu, Yagis 2021 [P05] ve Wen 2020 [P03] notlarındaki sızıntı ailesinin ta kendisi.
+Birden çok kohort ancak şu iki biçimde kullanılır: (a) **biri eğitim, diğeri dış test** (PROTOKOL "Dış test"),
+(b) her kohort kendi içinde dengeli sınıflara sahipse ve merkez etkisi raporlanıyorsa. Sınıfları kohortlara
+bölüştürmek **asla**.
+
+### Yeni araç: `bolme.py etiket-bids`
+Herhangi bir BIDS/OpenNeuro setini tek komutla etiket CSV'sine çevirir — tanı sütununu kendiliğinden bulur,
+yazım farklarını (`Control`/`CN`/`Normal`, `AD`/`DAT`/`Dementia`…) tek bir eşleme tablosundan çözer, sınıfı
+çok küçük olan sette uyarı verir:
+
+```powershell
+python uygulama\ortak\bolme.py etiket-bids ^
+    --katilimcilar D:\veri\ds007561\ham\participants.tsv ^
+    --veri D:\veri\ds007561\islenmis ^
+    --cikti veri\ds007561_etiket.csv
+```
+ds007561'de koşuldu: `20 denek → {0: 14, 1: 5, 2: 1}` + "en küçük sınıfta 10'dan az denek var → SONUCLAR
+tablosuna giremez" uyarısı. ADNI/OASIS dışındaki her açık seti aynı komut okur.
+
 ## 3. Etiket kuralları
 ### 3.1 ADNI1 (ADNIMERGE.csv, `VISCODE == "bl"`)
 | `DX_bl` | Bizim sınıf | Not |
