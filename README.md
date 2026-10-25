@@ -1,5 +1,6 @@
 # Alzheimer Erken Teşhisi — 3B Derin Öğrenme Karar Destek Sistemi
 
+**Depo:** https://github.com/YesilBaraN/tasarim-alzheimer
 **Ders:** BSM 401 Bilgisayar Mühendisliği Tasarımı · Sakarya Üniversitesi, Bilgisayar Mühendisliği · 2026-2027 Güz
 **Danışman:** Dr. Öğr. Üyesi Can Yüzkollar
 **Ekip:** Ahmet Görkem Yavuz (G231210032) · Ertuğrul Kabaoğlu (G231210376) · Baran Yeşilyurt (G231210078)
@@ -35,10 +36,53 @@ ADNI veri tabanından T1 ağırlıklı 3B yapısal MRI (sMRI) ve NC / MCI / AD k
 | `karsilastirma/tablo_uret.py` | Koşu kayıtları → SONUCLAR satırı; uymayan koşuları ayıklar, taramayı doğrulama üstünden seçer |
 | `devir/DEVIR-<ad>.md` | Her arkadaşın kendi Claude sohbetine yapıştıracağı devir promptu |
 
-## Nasıl devam edilir (3 adım)
-1. `SUREC.md` → "NEREDE KALDIK" tablosuna bak; kendi satırını bul.
-2. `devir/DEVIR-<adın>.md` dosyasının **A bölümünü** kendi Claude sohbetine yapıştır, klasörü (zip) sohbete yükle.
-3. İşin bitince `SUREC.md` tablosundaki durumunu ve `DEVAM.md`'yi güncelle.
+## Takım: GitHub'dan nasıl devam edilir
+
+Depo: **https://github.com/YesilBaraN/tasarim-alzheimer**
+
+### 1. Kur (bir kez, ~15 dk)
+```powershell
+git clone https://github.com/YesilBaraN/tasarim-alzheimer.git
+cd tasarim-alzheimer
+py install 3.12                 # Python 3.12 yoksa; olmazsa python.org/downloads (3.11 veya 3.12)
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+pip install -r onisleme\requirements.txt
+```
+GPU'n varsa CPU satırı yerine `KURULUM.md §2` Yol A'yı izle — **cu124 kullanma**, orada açıklanan tuzağa düşersin.
+
+### 2. Yeşil olduğunu gör (~3 dk)
+```powershell
+python uygulama\test_model.py
+python onisleme\test_onisle.py
+python uygulama\ortak\saglik_testi.py
+```
+Üçünde de `OK` satırları ve sonda `TÜM ... OK` görmelisin. Görmezsen kod değiştirmeden önce bunu çöz.
+
+### 3. Nerede kaldığımızı oku
+`SUREC.md` → **§9 NEREDE KALDIK** tablosunda kendi satırlarını bul. Sonra `DEVAM.md` (son oturumda ne yapıldı, ne bozuktu, ne düzeltildi) ve `uygulama/PROTOKOL.md` (bağlayıcı kurallar).
+
+### 4. Çalış ve geri gönder
+`devir/DEVIR-<adın>.md` dosyasının **A bölümünü** kendi Claude sohbetine yapıştır. İki yol var:
+
+- **Claude Code ile (önerilir):** klasörü açtır, dosyaları doğrudan düzenlesin, sonra
+  ```powershell
+  git pull --rebase
+  git add -A
+  git commit -m "Gorkem: P06 inceleme notu"
+  git push
+  ```
+- **claude.ai sohbetiyle:** sohbette dosya sistemi yok; değiştirdiği dosyaları tam içerikle indir, klasöre koy, yukarıdaki dört komutu koş. İstersen GitHub web arayüzünden de yükleyebilirsin (dosyayı aç → kalem simgesi → yapıştır → Commit).
+
+**Push öncesi her zaman `git pull --rebase`.** Çakışma çıkarsa dosyayı aç, `<<<<<<<` işaretlerini temizle, `git add` + `git rebase --continue`.
+
+### Çakışmayı önleyen tek kural
+Kendi klasörlerin sende: `makaleler/<adın>/`, `uygulama/<adın>_*`. **Ortak dosyalarda (`SUREC.md`, `DEVAM.md`, `KARSILASTIRMA-15.md`, `MAKALE-LISTESI.md`, `rapor/`) yalnız kendi satırını/bölümünü düzenle.** Başkasının satırına dokunma; aynı satırı iki kişi değiştirirse rebase çakışır.
+
+### Depoya ASLA girmeyecekler
+ADNI/OASIS görüntüleri, `.npy`/`.pth`/`.onnx` dosyaları, klinik sütunlu bölme CSV'leri, `.venv`. `.gitignore` bunları dışlıyor — **`git add -f` ile zorlamayın**, DUA ihlali olur. Veriyi herkes kendi hesabıyla indirir (`veri/VERI-SETI.md`).
 
 ## Bağlayıcı ilkeler
 - **Açık erişim:** tüm makaleler ücretsiz tam metinli; tüm kod MIT/Apache/BSD lisanslı açık depolardan veya MONAI'den; araçlar pip ile ücretsiz; hesaplama Kaggle/Colab ücretsiz katman.

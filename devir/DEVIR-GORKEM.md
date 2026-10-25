@@ -1,6 +1,9 @@
 # Görkem — kendi Claude sohbetine devir
 
-## A) Yeni sohbete yapıştırılacak prompt (klasör zip'ini de yükle)
+## A) Yeni sohbete yapıştırılacak prompt
+
+**Önce:** depoyu klonla ve ortamı kur — `README.md` → "Takım: GitHub'dan nasıl devam edilir". Depo: https://github.com/YesilBaraN/tasarim-alzheimer
+Claude Code kullanıyorsan klasörü ona açtır; claude.ai sohbetindeysen klasörü zip'leyip sohbete yükle (dosya sistemi olmadığı için çıktıları indirip sen commit'leyeceksin).
 
 > Ben Ahmet Görkem Yavuz (G231210032), Sakarya Üniversitesi Bilgisayar Mühendisliği, BSM 401 Bilgisayar Mühendisliği Tasarımı dersi, 2026-2027 Güz. Ekip: Ertuğrul Kabaoğlu, Baran Yeşilyurt ve ben; danışman Dr. Öğr. Üyesi Can Yüzkollar. Konu: **"Alzheimer Hastalığının Erken Teşhisi İçin 3B Derin Öğrenme Tabanlı Karar Destek Sistemi Geliştirilmesi"** (ADNI T1 sMRI, NC/MCI/AD, 3D-ResNet başta 3B CNN'ler, ≥%85 hedefi, ONNX/API prototip).
 >
@@ -18,7 +21,7 @@
 > 3. `makaleler/KARSILASTIRMA-15.md` tablosunda P06–P10 satırlarını doldur (P01–P05 satırlarındaki ayrıntı düzeyinde).
 > 4. `rapor/ARA-RAPOR-2-TASLAK.md` §2.2'ye her makale için 1–2 paragraf; §3 gereksinim tablolarını gözden geçir ve use-case diyagramı için PlantUML/draw.io taslağı üret.
 > 5. İmplementasyon: `uygulama/gorkem_P06_bohle/README.md` ve `gorkem_P07_resattnet/README.md` yapılacaklarını izle; `model.py` sözleşmesi `uygulama/ortak/egit.py` başlığında (`olustur(varyant, sinif_sayisi, girdi_boyut, **kw)`). Kod **yalnız MIT/Apache/BSD** depolardan veya MONAI'den; GPL kopyalanmaz. Kod ve test komutlarını sen yazarsın, ben kendi PC'mde koşarım ve çıktıyı sohbete yapıştırırım (önce `KURULUM.md` ile ortam, `python uygulama\test_model.py` yeşil olmalı). Veri gelene kadar yalnız duman testi koşulabilir; o sürede makale notları ve rapor bölümleri yapılır.
-> 6. Bittiğinde `SUREC.md §9` tablosundaki satırlarımı, `DEVAM.md`'yi ve `MAKALE-LISTESI.md` + `KARSILASTIRMA-15.md` **Durum** sütunlarımı güncelle. Bu sohbette dosya sistemi yok: değiştirdiğin her dosyayı **tam içerikle indirilebilir** olarak ver; ben klasöre koyup Baran'a zip ile iletirim. Ortak dosyalarda (SUREC, KARSILASTIRMA, ARA-RAPOR) yalnız kendi satır/bölümlerimi düzenle, başkasının bölümüne dokunma.
+> 6. Bittiğinde `SUREC.md §9` tablosundaki satırlarımı, `DEVAM.md`'yi ve `MAKALE-LISTESI.md` + `KARSILASTIRMA-15.md` **Durum** sütunlarımı güncelle. İşim GitHub'a commit'lenerek paylaşılıyor (`git pull --rebase` → `git add -A` → `git commit` → `git push`). Bu sohbette dosya sistemi yoksa değiştirdiğin her dosyayı **tam içerikle indirilebilir** olarak ver, ben klasöre koyup commit'lerim. Aynı satırı iki kişi değiştirirse rebase çakışır, o yüzden: Ortak dosyalarda (SUREC, KARSILASTIRMA, ARA-RAPOR) yalnız kendi satır/bölümlerimi düzenle, başkasının bölümüne dokunma.
 >
 > Kurallar: bölme her zaman denek (RID) düzeyinde; ADNI verisi paylaşılmaz (DUA); sonuçlar PROTOKOL'e uymuyorsa tabloya girmez; hedef metrik tartışması danışmanla (AD-NC ≥%85 birincil, 3-sınıf ikincil). İç teslimler (varsayım, bölüm tarihi gelince güncellenir): makale notları **6 Kasım**, Ara Rapor 2 katkıları **14–20 Kasım**; 28 Aralık yalnızca final raporun son teslim sınırıdır.
 
