@@ -112,7 +112,27 @@ karşılaştırarak doğrulayabilirsin — fark varsa tohum ya da etiket CSV'si 
   ```
 - **claude.ai sohbetiyle:** sohbette dosya sistemi yok; değiştirdiği dosyaları tam içerikle indir, klasöre koy, yukarıdaki dört komutu koş. İstersen GitHub web arayüzünden de yükleyebilirsin (dosyayı aç → kalem simgesi → yapıştır → Commit).
 
+> **PR açmanız gerekmiyor — doğrudan `main`'e push edin.** Üçünüz de yazma yetkisine sahipsiniz
+> ve `main` dalında koruma yok; yukarıdaki dört komut yeterli, kimsenin onayını beklemenize gerek yok.
+> Pull request yalnızca **isteyerek** kullanılır: büyük bir değişikliği göstermek ya da CI'ı
+> `main`'e dokunmadan koşturmak istiyorsanız. Yoksa normal yol doğrudan push.
+
 **Push öncesi her zaman `git pull --rebase`.** Çakışma çıkarsa dosyayı aç, `<<<<<<<` işaretlerini temizle, `git add` + `git rebase --continue`.
+
+### Yetkiler
+| Kişi | Rol | Yapabildiği |
+|---|---|---|
+| Baran (`YesilBaraN`) | admin / sahip | her şey + depo ayarları, yetki verme, görünürlük |
+| Görkem (`ahmtgrkem`) | write | **doğrudan `main`'e push**, dal açma, PR açma/birleştirme, issue, Actions |
+| Ertuğrul (`Wujin0`) | write | aynısı |
+
+Write yetkisi günlük işin **tamamını** kapsıyor: kod yazmak, push etmek, PR birleştirmek, issue açmak.
+Yalnızca depo ayarları (görünürlük, silme, yeni kişi ekleme) sahibe özel.
+
+⚠ **Admin yetkisi kişisel hesaptaki depoda paylaşılamıyor** — GitHub kişisel depolarda collaborator'a
+`admin` atanmasına izin vermiyor (API `422: Cannot assign … permission of admin` dönüyor). Üçümüzün de
+admin olması gerekirse depoyu ücretsiz bir **GitHub Organization**'a taşımak gerekir; iş akışı için
+gerekli değil, çünkü write zaten her şeyi kapsıyor.
 
 ### Çakışmayı önleyen tek kural
 Kendi klasörlerin sende: `makaleler/<adın>/`, `uygulama/<adın>_*`. **Ortak dosyalarda (`SUREC.md`, `DEVAM.md`, `KARSILASTIRMA-15.md`, `MAKALE-LISTESI.md`, `rapor/`) yalnız kendi satırını/bölümünü düzenle.** Başkasının satırına dokunma; aynı satırı iki kişi değiştirirse rebase çakışır.
