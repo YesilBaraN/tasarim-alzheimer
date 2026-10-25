@@ -55,7 +55,7 @@ print(kd.tahmin_nii("T1.nii.gz")["olasiliklar"])
 
 ## Yapılacaklar (Ara Rapor 3–4)
 
-- [ ] Isı haritası: `monai.visualize.GradCAM` / `OcclusionSensitivity` çıktısını PNG + NIfTI olarak döndür (Görkem'in XAI işiyle birleşir).
+- [x] **Isı haritası** → `uygulama/api/isi_haritasi.py` (25.10.2026). İki yöntem: `grad-cam` (hızlı; hedef katman verilmezse **son Conv3d** kendiliğinden bulunur, mimariye özel isim gerekmez — P01, P02, P06, P07, P12 hepsinde çalışır) ve `okluzyon` (yavaş ama mimariye hiç bakmaz, Grad-CAM şüpheliyse hakem). Çıktı `.npy` + üç dik kesitli `.png`. Sentetik doğrulama: imzanın kasten yerleştirildiği noktayı işaretliyor. **Eksik:** NIfTI çıktısı yok — `.npy` hacimleri MNI'ye hizalanıp şablon sınır kutusuna kırpıldığı için ham taramanın afin bilgisi kayboluyor; görüntüleyiciye bindirmek gerekirse `onisle.py --nii` referans alınacak.
 - [ ] Basit web arayüzü (yükle → tahmin + ısı haritası). Danışmana sorulacak: bu yeterli mi, DICOM görüntüleyici entegrasyonu mu bekleniyor (SUREC §7 soru 5).
 - [ ] Kalibrasyon: güven skoru gerçek olasılığı yansıtıyor mu (reliability diagram, Brier skoru).
 - [ ] Toplu mod: klasördeki tüm hacimler → CSV.

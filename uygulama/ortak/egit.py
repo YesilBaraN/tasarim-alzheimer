@@ -8,6 +8,9 @@ Kullanım (proje kökünden):
   --tum_katlar  → 5 katı sırayla koşar;  --tohumlar 2026 2027 2028 → üç tohum
   --lrler 1e-3 3e-4 1e-4  → PROTOKOL madde 7 LR taraması; her LR KENDİ koşu adıyla kaydedilir (çakışma yok)
   --etiket ablation-cevirsiz → koşu adına ek etiket;  --sifirdan → mevcut checkpoint'i yok sayıp baştan eğit
+  --isinma 5 → ön eğitimli gövde ilk 5 epoch donuk (yalnız baş + BN), sonra çözülür (transfer öğrenme;
+               yalnız --agirlik verildiğinde etkin, koşu adına _is5 olarak girer)
+  --optimizer adamw|adam|sgd → PROTOKOL AdamW ister; adam/sgd makale-sadık kontrol koşuları için
 Model sözleşmesi: uygulama/<model>/model.py içinde  olustur(varyant: str, sinif_sayisi: int, girdi_boyut: int, **kw) -> torch.nn.Module
 Çıktı: karsilastirma/kosu_kayitlari/<model>-<varyant>_<set>_<gorev>_t<tohum>_k<kat>_lr<lr>_b<boyut>[_<etiket>].json
        + <ad>.pth (en iyi doğrulama BAcc) ve <ad>_son.pth (her epoch; kesintiden devam)
@@ -42,7 +45,7 @@ sys.path.insert(0, str(KOK))
 from uygulama.ortak import metrikler, veri  # noqa: E402
 
 VARSAYILAN = dict(epoch=100, lr=3e-4, batch=4, accum=1, sabir=15, wd=1e-4, amp=True, boyut=128, isci=2,
-                  optimizer="adamw")
+                  optimizer="adamw", isinma=0)
 
 
 def optimizer_olustur(ad: str, parametreler, lr: float, wd: float):
@@ -82,6 +85,17 @@ def tohum_sabitle(t: int):
 def model_olustur(model_klasor: str, varyant: str, sinif_sayisi: int, girdi_boyut: int, **kw) -> nn.Module:
     mod = importlib.import_module(f"uygulama.{model_klasor}.model")
     return mod.olustur(varyant=varyant, sinif_sayisi=sinif_sayisi, girdi_boyut=girdi_boyut, **kw)
+
+
+def model_coz(model_klasor: str, model: nn.Module) -> str:
+    """Isınma bitince gövdeyi eğitilebilir yapar. Modelin kendi `coz()`'ü varsa o çağrılır."""
+    mod = importlib.import_module(f"uygulama.{model_klasor}.model")
+    if hasattr(mod, "coz"):
+        mod.coz(model)
+        return f"{model_klasor}.coz()"
+    for p in model.parameters():
+        p.requires_grad = True
+    return "requires_grad=True (modelin coz() fonksiyonu yok)"
 
 
 def commit_hash() -> str:
@@ -126,7 +140,14 @@ def egit(model_klasor: str, varyant: str, set_adi: str, gorev: str, kat: int, to
     tr = veri.yukleyici(egitim_df, veri_kok, gorev, True, a["batch"], isci=a["isci"], boyut=a["boyut"], tohum=tohum)
     va = veri.yukleyici(dogrulama_df, veri_kok, gorev, False, a["batch"], isci=a["isci"], boyut=a["boyut"], tohum=tohum)
     k = veri.sinif_sayisi(gorev)
-    model = model_olustur(model_klasor, varyant, k, a["boyut"], agirlik=agirlik).to(cihaz)
+    # --isinma N: ön eğitimli gövde ilk N epoch donuk kalır (yalnız baş + BN öğrenir), sonra çözülür.
+    # Transfer öğrenmede standart: rastgele başlatılmış baş, ilk adımlarda gövdeyi bozmasın.
+    dondur = bool(a["isinma"]) and bool(agirlik)
+    model = model_olustur(model_klasor, varyant, k, a["boyut"], agirlik=agirlik, dondur=dondur).to(cihaz)
+    if dondur:
+        egitilebilir = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        print(f"ısınma açık: {a['isinma']} epoch gövde donuk "
+              f"({egitilebilir/1e6:.2f}M / {sum(p.numel() for p in model.parameters())/1e6:.2f}M parametre eğitilebilir)")
     param = sum(p.numel() for p in model.parameters())
     kayip = nn.CrossEntropyLoss(weight=tr.dataset.sinif_agirliklari().to(cihaz))  # sınıf dengesizliği
     opt = optimizer_olustur(a["optimizer"], model.parameters(), a["lr"], a["wd"])
@@ -138,6 +159,8 @@ def egit(model_klasor: str, varyant: str, set_adi: str, gorev: str, kat: int, to
     ad = f"{model_klasor}-{varyant}_{set_adi}_{gorev}_t{tohum}_k{kat}_lr{a['lr']:.0e}_b{a['boyut']}"
     if str(a["optimizer"]).lower() != "adamw":   # makale-sadık koşu PROTOKOL koşusunun kaydını ezmesin
         ad += f"_{str(a['optimizer']).lower()}"
+    if dondur:                                   # iki aşamalı koşu tek aşamalının kaydını ezmesin
+        ad += f"_is{a['isinma']}"                 # (ısınma yalnız ön eğitimli gövdede anlamlı → yalnız o zaman ada girer)
     if etiket:
         ad += f"_{etiket}"
     cikti = KOK / cikti_klasor; cikti.mkdir(parents=True, exist_ok=True)
@@ -152,9 +175,14 @@ def egit(model_klasor: str, varyant: str, set_adi: str, gorev: str, kat: int, to
         baslangic_epoch = d["epoch"] + 1
         en_iyi, en_iyi_epoch, sabir, gecmis = d["en_iyi"], d["en_iyi_epoch"], d["sabir"], d["gecmis"]
         print(f"devam: epoch {baslangic_epoch}, en iyi BAcc {en_iyi:.3f} (epoch {en_iyi_epoch}), sabır {sabir}")
+        if dondur and baslangic_epoch >= a["isinma"]:   # kesinti ısınmadan sonra olduysa gövde çözülü başlar
+            print(f"  ısınma zaten bitmiş → {model_coz(model_klasor, model)}")
 
     t0 = time.time()
     for ep in range(baslangic_epoch, a["epoch"]):
+        if dondur and ep == a["isinma"]:
+            print(f"[{ad}] ısınma bitti (epoch {ep}) → {model_coz(model_klasor, model)}; "
+                  f"artık {sum(p.numel() for p in model.parameters() if p.requires_grad)/1e6:.2f}M parametre eğitiliyor")
         model.train(); toplam, n = 0.0, 0; bekleyen = False; opt.zero_grad(set_to_none=True)
         for i, (x, y, _) in enumerate(tr):
             x, y = x.to(cihaz, non_blocking=True), torch.as_tensor(y).to(cihaz)
