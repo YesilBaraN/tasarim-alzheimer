@@ -176,6 +176,21 @@ def dicomdan_nifti(klasor: Path) -> Path:
 
 
 # ----------------------------------------------------------------------------- kafatası
+def hdbet_cihaz(cihaz) -> str:
+    """HD-BET 2.x `-device` değerini doğrudan `torch.device()`'a veriyor.
+
+    Eski (1.x) yazım `-device 0` artık `RuntimeError: Invalid device string: '0'` atıyor; `cuda:0` gerekiyor.
+    Belgelerde ve alışkanlıkta `--cihaz 0` kaldığı için burada çeviriyoruz: 0 → cuda:0, gpu/cuda → cuda,
+    cpu → cpu, geri kalanı olduğu gibi.
+    """
+    c = str(cihaz).strip().lower()
+    if c.isdigit():
+        return f"cuda:{c}"
+    if c in ("gpu", "cuda"):
+        return "cuda"
+    return c
+
+
 def kafatasi_ayikla(img: sitk.Image, cihaz: str = "cpu") -> tuple[sitk.Image, sitk.Image]:
     """HD-BET CLI ile beyin görüntüsü + ikili maske döner. Maske = beyin > 0 (dosya adına bağımlı değil)."""
     exe = arac_bul("hd-bet")
@@ -186,8 +201,9 @@ def kafatasi_ayikla(img: sitk.Image, cihaz: str = "cpu") -> tuple[sitk.Image, si
     girdi = gecici / "girdi.nii.gz"
     cikti = gecici / "beyin.nii.gz"
     sitk_yaz(img, girdi)
-    komut = [exe, "-i", dis_arac_yolu(girdi), "-o", dis_arac_yolu(cikti), "-device", str(cihaz)]
-    if str(cihaz) == "cpu":
+    c = hdbet_cihaz(cihaz)
+    komut = [exe, "-i", dis_arac_yolu(girdi), "-o", dis_arac_yolu(cikti), "-device", c]
+    if c == "cpu":
         komut += ["--disable_tta"]
     subprocess.run(komut, check=True)
     beyin = sitk.Cast(sitk_oku(cikti), sitk.sitkFloat32)
