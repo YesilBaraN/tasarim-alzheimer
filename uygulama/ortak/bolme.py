@@ -98,7 +98,8 @@ def _sinif_cevir(deger) -> int | None:
     return DX_BIDS.get(s)
 
 
-def etiket_bids(katilimcilar: Path, veri_klasor: Path, cikti: Path, sutun: str | None = None) -> pd.DataFrame:
+def etiket_bids(katilimcilar: Path, veri_klasor: Path, cikti: Path, sutun: str | None = None,
+                kaynak: str | None = None) -> pd.DataFrame:
     """BIDS participants.tsv + görüntü klasörü → etiket CSV (denek_id, dosya, sinif, yas, cinsiyet).
 
     `veri_klasor` ön işlenmiş `.npy` klasörü olabilir (eğitim için) ya da ham `.nii.gz` klasörü
@@ -106,6 +107,10 @@ def etiket_bids(katilimcilar: Path, veri_klasor: Path, cikti: Path, sutun: str |
     """
     df = pd.read_csv(katilimcilar, sep="\t", dtype=str)
     kimlik = "participant_id" if "participant_id" in df.columns else df.columns[0]
+    # Kaynak kohort adı: verilmezse veri setinin klasör adından türetilir (ds007561, ds007857…).
+    # Birden çok kohort birleştirildiğinde bu sütun hem katları dengelemek hem merkez etkisini
+    # raporlamak için gerekir (VERI-SETI §2d).
+    kaynak = kaynak or Path(katilimcilar).resolve().parent.parent.name or "bilinmeyen"
     if sutun is None:
         aday = [c for c in df.columns if c.strip().lower() in TANI_SUTUNLARI]
         if not aday:
@@ -131,7 +136,8 @@ def etiket_bids(katilimcilar: Path, veri_klasor: Path, cikti: Path, sutun: str |
             continue
         satirlar.append({"denek_id": denek, "dosya": adaylar[0].name, "sinif": sinif,
                          "yas": r.get(yas_s, np.nan) if yas_s else np.nan,
-                         "cinsiyet": r.get(cins_s, "") if cins_s else ""})
+                         "cinsiyet": r.get(cins_s, "") if cins_s else "",
+                         "kaynak": kaynak})
 
     out = pd.DataFrame(satirlar).drop_duplicates("denek_id")
     Path(cikti).parent.mkdir(parents=True, exist_ok=True)
@@ -149,16 +155,73 @@ def etiket_bids(katilimcilar: Path, veri_klasor: Path, cikti: Path, sutun: str |
     return out
 
 
+def birlestir(girdiler: list[Path], cikti: Path) -> pd.DataFrame:
+    """Birden çok etiket CSV'sini tek dosyada birleştirir ve kohort × sınıf tablosunu basar.
+
+    UYARI (VERI-SETI §2d): birleştirme ancak **her kohort kendi içinde birden çok sınıfa sahipse**
+    meşrudur. Sınıfları kohortlara bölüştürmek (AD'yi bir setten, kontrolü başkasından almak) modelin
+    hastalık yerine tarayıcıyı öğrenmesine yol açar. Bu fonksiyon o durumu tespit edip uyarır.
+    """
+    parcalar = []
+    for g in girdiler:
+        d = pd.read_csv(g)
+        if "kaynak" not in d.columns:
+            d["kaynak"] = Path(g).stem
+        parcalar.append(d)
+    out = pd.concat(parcalar, ignore_index=True)
+
+    # Kimlik çakışması olursa kaynak önüne eklenir (iki sette aynı sub-01 olabilir)
+    if not out["denek_id"].is_unique:
+        cak = out[out["denek_id"].duplicated(keep=False)]["denek_id"].nunique()
+        out["denek_id"] = out["kaynak"].astype(str) + "_" + out["denek_id"].astype(str)
+        print(f"UYARI {cak} denek kimliği iki sette de vardı → kimliklerin başına kaynak eklendi")
+
+    tablo = pd.crosstab(out["kaynak"], out["sinif"])
+    print(f"birleştirildi: {len(out)} denek, {out['kaynak'].nunique()} kohort → {cikti}")
+    print(tablo.to_string())
+    tek_sinifli = [k for k, s in out.groupby("kaynak")["sinif"].nunique().items() if s < 2]
+    if tek_sinifli:
+        print(f"  !! TEHLİKE: {tek_sinifli} kohortunda tek sınıf var. Sınıf ile kohort birbirine karışmış "
+              f"durumda; model tarayıcıyı öğrenir. Bu birleşim PROTOKOL'e göre KULLANILAMAZ (VERI-SETI §2d).")
+    Path(cikti).parent.mkdir(parents=True, exist_ok=True)
+    out.to_csv(cikti, index=False)
+    return out
+
+
 def bol(etiket: Path, set_adi: str, cikti: Path, test_oran: float = 0.15, kat: int = 5, tohum: int = 2026):
     df = pd.read_csv(etiket)
     assert df["denek_id"].is_unique, "etiket CSV'de denek_id tekrarlı — her denek tek satır olmalı"
     cikti = Path(cikti); cikti.mkdir(parents=True, exist_ok=True)
-    # kilitli test: denek düzeyi (her satır zaten bir denek), sınıf dengeli
-    kalan, test = train_test_split(df, test_size=test_oran, stratify=df["sinif"], random_state=tohum)
+
+    # Çok kohortlu veride katlar hem SINIF hem KAYNAK bakımından dengeli olmalı: yoksa bir kat
+    # ağırlıklı olarak tek bir tarayıcıdan gelir ve o katın sonucu merkez etkisini ölçer.
+    # Hücrelerden biri kat sayısından küçükse bu mümkün değil → sınıfa göre dengelemeye düşülür.
+    def _tabaka(d):
+        if "kaynak" in d.columns and d["kaynak"].nunique() > 1:
+            birlesik = d["sinif"].astype(str) + "|" + d["kaynak"].astype(str)
+            if birlesik.value_counts().min() >= max(kat, 2):
+                return birlesik, True
+            print("  not: kohort×sınıf hücrelerinden biri çok küçük → katlar yalnız sınıfa göre dengelendi")
+        return d["sinif"], False
+
+    tab, kohort_dengeli = _tabaka(df)
+    try:
+        kalan, test = train_test_split(df, test_size=test_oran, stratify=tab, random_state=tohum)
+    except ValueError:
+        print("  not: kilitli test kohort×sınıfa göre bölünemedi → yalnız sınıfa göre bölündü")
+        kohort_dengeli = False
+        kalan, test = train_test_split(df, test_size=test_oran, stratify=df["sinif"], random_state=tohum)
     test.to_csv(cikti / f"{set_adi}_test.csv", index=False)
     sgkf = StratifiedGroupKFold(n_splits=kat, shuffle=True, random_state=tohum)
+    kalan_tab = (kalan["sinif"].astype(str) + "|" + kalan["kaynak"].astype(str)) if kohort_dengeli else kalan["sinif"]
+    try:
+        bolmeler = list(sgkf.split(kalan, kalan_tab, groups=kalan["denek_id"]))
+    except ValueError:
+        print("  not: katlar kohort×sınıfa göre bölünemedi → yalnız sınıfa göre bölündü")
+        kohort_dengeli = False
+        bolmeler = list(sgkf.split(kalan, kalan["sinif"], groups=kalan["denek_id"]))
     harita = [{"denek_id": r, "bolum": "test", "kat": -1} for r in test["denek_id"]]
-    for k, (egitim_idx, dogrulama_idx) in enumerate(sgkf.split(kalan, kalan["sinif"], groups=kalan["denek_id"])):
+    for k, (egitim_idx, dogrulama_idx) in enumerate(bolmeler):
         d = kalan.copy(); d["bolum"] = "egitim"
         d.iloc[dogrulama_idx, d.columns.get_loc("bolum")] = "dogrulama"
         d.to_csv(cikti / f"{set_adi}_kat{k}.csv", index=False)
@@ -168,7 +231,11 @@ def bol(etiket: Path, set_adi: str, cikti: Path, test_oran: float = 0.15, kat: i
     # (clinicadl de bölmeleri böyle yayımlar). Depoya giren dosya BUDUR; klinik sütunlu CSV'ler yerelde kalır.
     harita_yolu = cikti / f"{set_adi}_bolme_haritasi.csv"
     pd.DataFrame(harita).to_csv(harita_yolu, index=False)
-    print(f"{set_adi}: test {len(test)} denek, CV {len(kalan)} denek, {kat} kat → {cikti}")
+    print(f"{set_adi}: test {len(test)} denek, CV {len(kalan)} denek, {kat} kat → {cikti}"
+          + ("  [katlar kohort×sınıf dengeli]" if kohort_dengeli else ""))
+    if "kaynak" in df.columns and df["kaynak"].nunique() > 1:
+        print("  kohort × sınıf (tüm set):")
+        print(pd.crosstab(df["kaynak"], df["sinif"]).to_string())
     print(f"  depoya girecek paylaşılabilir harita (klinik sütun yok): {harita_yolu.name}")
     dogrula(set_adi, cikti)
 
@@ -197,13 +264,15 @@ def main():
     s = p.add_subparsers(dest="komut", required=True)
     a = s.add_parser("etiket-adni"); a.add_argument("--adnimerge", required=True); a.add_argument("--islenmis", required=True); a.add_argument("--cikti", required=True)
     o = s.add_parser("etiket-oasis"); o.add_argument("--csv", required=True); o.add_argument("--islenmis", required=True); o.add_argument("--cikti", required=True); o.add_argument("--min_yas", type=int, default=60)
-    bd = s.add_parser("etiket-bids"); bd.add_argument("--katilimcilar", required=True); bd.add_argument("--veri", required=True); bd.add_argument("--cikti", required=True); bd.add_argument("--sutun", default=None)
+    bd = s.add_parser("etiket-bids"); bd.add_argument("--katilimcilar", required=True); bd.add_argument("--veri", required=True); bd.add_argument("--cikti", required=True); bd.add_argument("--sutun", default=None); bd.add_argument("--kaynak", default=None)
+    br = s.add_parser("birlestir"); br.add_argument("--girdi", nargs="+", required=True); br.add_argument("--cikti", required=True)
     b = s.add_parser("bol"); b.add_argument("--etiket", required=True); b.add_argument("--set", required=True); b.add_argument("--cikti", default="veri/bolme"); b.add_argument("--test_oran", type=float, default=0.15); b.add_argument("--kat", type=int, default=5); b.add_argument("--tohum", type=int, default=2026)
     d = s.add_parser("dogrula"); d.add_argument("--set", required=True); d.add_argument("--bolme", default="veri/bolme")
     x = p.parse_args()
     if x.komut == "etiket-adni": etiket_adni(Path(x.adnimerge), Path(x.islenmis), Path(x.cikti))
     elif x.komut == "etiket-oasis": etiket_oasis(Path(x.csv), Path(x.islenmis), Path(x.cikti), x.min_yas)
-    elif x.komut == "etiket-bids": etiket_bids(Path(x.katilimcilar), Path(x.veri), Path(x.cikti), x.sutun)
+    elif x.komut == "etiket-bids": etiket_bids(Path(x.katilimcilar), Path(x.veri), Path(x.cikti), x.sutun, x.kaynak)
+    elif x.komut == "birlestir": birlestir([Path(g) for g in x.girdi], Path(x.cikti))
     elif x.komut == "bol": bol(Path(x.etiket), x.set, Path(x.cikti), x.test_oran, x.kat, x.tohum)
     elif x.komut == "dogrula": raise SystemExit(0 if dogrula(x.set, Path(x.bolme)) else 1)
 

@@ -131,7 +131,19 @@ python uygulama\ortak\bolme.py etiket-bids ^
     --cikti veri\ds007561_etiket.csv
 ```
 ds007561'de koşuldu: `20 denek → {0: 14, 1: 5, 2: 1}` + "en küçük sınıfta 10'dan az denek var → SONUCLAR
-tablosuna giremez" uyarısı. ADNI/OASIS dışındaki her açık seti aynı komut okur.
+tablosuna giremez" uyarısı. ADNI/OASIS dışındaki her açık seti aynı komut okur. Çıktıya **`kaynak`** sütunu
+da yazılır (hangi kohorttan geldiği), birden çok set birleştirildiğinde gerekli.
+
+### Çok kohortlu çalışma: `birlestir` + kohort dengeli katlar
+```powershell
+python uygulama\ortakolme.py birlestir --girdi veri\ds007561_etiket.csv veri\ds007857_etiket.csv --cikti veriirlesik_etiket.csv
+```
+- Kimlik çakışırsa (iki sette de `sub-01`) kimliklerin başına kaynak eklenir.
+- **Kohort × sınıf tablosu basılır.** Bir kohortta tek sınıf varsa `!! TEHLİKE` uyarısı verir ve o birleşimin
+  PROTOKOL'e göre kullanılamayacağını söyler — sınıf ile tarayıcı birbirine karışmış demektir.
+- `bol` komutu `kaynak` sütununu görünce katları **hem sınıf hem kohort** bakımından dengeler; aksi hâlde bir
+  kat ağırlıklı olarak tek bir tarayıcıdan gelir ve o katın sonucu merkez etkisini ölçer. Hücrelerden biri kat
+  sayısından küçükse bu mümkün olmaz → yalnız sınıfa göre dengelenir ve bu durum ekrana yazılır.
 
 ## 3. Etiket kuralları
 ### 3.1 ADNI1 (ADNIMERGE.csv, `VISCODE == "bl"`)
