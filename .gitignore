@@ -36,5 +36,10 @@ veri/bolme/*_test.csv
 # ama paylaşılabilir bölme haritası (yalnız denek kimliği + kat) depoya GİRER:
 !veri/bolme/*_bolme_haritasi.csv
 
+# CC0 setlerin etiketleri de GİRER: ds007561 ve ds007857 OpenNeuro/CC0, yeniden dağıtım serbest.
+# Yukarıdaki yasak yalnız DUA'lı setler (ADNI, OASIS) içindir — onların etiketleri yerelde kalır.
+!veri/ds007561_*.csv
+!veri/ds007857_*.csv
+
 # CI gecici cikti klasoru
 ci_cikti/
