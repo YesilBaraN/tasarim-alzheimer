@@ -153,6 +153,51 @@ python uygulama\ortakolme.py birlestir --girdi veri\ds007561_etiket.csv veri\ds
   kat ağırlıklı olarak tek bir tarayıcıdan gelir ve o katın sonucu merkez etkisini ölçer. Hücrelerden biri kat
   sayısından küçükse bu mümkün olmaz → yalnız sınıfa göre dengelenir ve bu durum ekrana yazılır.
 
+## 2e. Adı geçen üç Kaggle seti — tek tek incelendi (25.10.2026)
+
+Ekipten "şu setlere baktın mı" diye sorulan üç set, kendi açıklama metinleri okunarak değerlendirildi.
+Üçü de reddedildi ama **sebepleri farklı**; aşağıda her biri kendi gerekçesiyle.
+
+### 1. `ninadaithal/imagesoasis` — gerçek OASIS, ama 2B JPG
+Kendi açıklamasından: *OASIS MRI veri seti, 80.000 görüntü, **461 hasta**. Özgün `.img/.hdr` dosyaları FSL
+ile NIfTI'ye çevrilmiş. Sinir ağı eğitimi için **2B görüntüler** kullanılmış: beyin z ekseninde 256 dilime
+bölünmüş, her hastadan **100–160 arası dilimler** seçilmiş. Sınıflar **CDR** değerlerinden türetilmiş.
+`.nii` taramalar **`.jpg`'ye çevrilmiş**.*
+
+Üçü ciddi, biri ölümcül:
+- **2B JPG.** Bizim altı modelimiz de 3B hacim alıyor (VoxCNN, VoxResNet, MedicalNet ResNet-18, ResAttNet,
+  FCN, DenseNet121). 2B dilim bu ağlara girmez.
+- **JPG dönüşümü yıkıcı.** 8 bit, kayıplı sıkıştırma. MRI yoğunlukları nicel veridir; z-score, N4 bias
+  düzeltme ve atrofi ölçümü JPG'den sonra anlamını yitirir.
+- **Hasta başına ~173 dilim.** 80.000 / 461 ≈ 173. Görüntü düzeyinde rastgele bölersen aynı hastanın
+  dilimleri hem eğitimde hem testte olur — Yagis 2021 [P05] bunun doğruluğu **25–55 puan** şişirdiğini
+  ölçtü. PROTOKOL madde 1 (denek düzeyinde bölme) bu veriyle uygulanamaz.
+- **OASIS yeniden dağıtımı.** Kaynak açıkça OASIS; OASIS Data Use Terms üçüncü tarafa dağıtımı yasaklar.
+
+**Ama bu set bir şeyi doğru gösteriyor:** OASIS gerçekten bizim istediğimiz veri. Doğru yol onu
+oasis-brains.org formundan almak (`§2`), ki zaten başvuru listemizde — **henüz gönderilmedi** (`SUREC §9` satır 7).
+
+### 2. `mohiburrahmanrifat/alzheimer` — sızıntı açıkça ilan edilmiş
+6.336 görüntü: 3.200 Non_Demented · 2.240 Very_Mild · 896 Mild. Bu sayılar `tourist55/alzheimers-dataset-4-class-of-images`
+setinin sayılarıdır (Moderate sınıfı çıkarılmış hâli). Açıklamasında şu cümle geçiyor:
+
+> *"The dataset has been randomly divided into training, validation, and testing subsets using a fixed random seed."*
+
+**Görüntü düzeyinde rastgele bölme.** Dilimler hastalardan geliyor ve hasta kimliği yok; dolayısıyla bu
+hazır bölme sızıntı içeriyor ve düzeltilemez. Bu setle üretilen her doğruluk şişkindir. Sabit tohum
+tekrarlanabilirlik sağlar ama **yanlışı tekrarlanabilir kılar**, doğru yapmaz.
+
+### 3. `uraninjo/augmented-alzheimer-mri-dataset` — en ağır sızıntı
+Kendi açıklamasından: *"Data is augmented from an existing dataset"* — kaynak yine `tourist55`. Artırılmış
+(döndürülmüş, kaydırılmış) kopyalar özgün görüntülerle aynı havuzda. Rastgele bölünce **aynı görüntünün
+artırılmış kopyası** hem eğitimde hem testte oluyor. Bu, dilim sızıntısından da beter: model ezberlediği
+görüntünün kopyasını test ediyor.
+
+### Üçünün ortak sorunu, tek cümlede
+Hiçbirinde **denek kimliği** yok. PROTOKOL'ün 1. maddesi "bölme her zaman denek düzeyinde" diyor ve bu
+veriyle o madde **uygulanamaz** — isteğe bağlı değil, teknik olarak imkânsız. Projenin tezi sızıntısız
+değerlendirme olduğu için, bu setlerle çalışmak raporun literatür bölümüyle yöntem bölümünü çelişkiye düşürür.
+
 ## 3. Etiket kuralları
 ### 3.1 ADNI1 (ADNIMERGE.csv, `VISCODE == "bl"`)
 | `DX_bl` | Bizim sınıf | Not |
