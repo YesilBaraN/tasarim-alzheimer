@@ -238,7 +238,7 @@ def egit(model_klasor: str, varyant: str, set_adi: str, gorev: str, kat: int, to
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--model", required=True); p.add_argument("--varyant", default="varsayilan")
-    p.add_argument("--set", required=True); p.add_argument("--gorev", choices=["ikili", "uc"], default="ikili")
+    p.add_argument("--set", required=True); p.add_argument("--gorev", choices=["ikili", "ikili-mci", "uc"], default="ikili")
     p.add_argument("--kat", type=int, default=0); p.add_argument("--tum_katlar", action="store_true")
     p.add_argument("--tohum", type=int, default=2026); p.add_argument("--tohumlar", type=int, nargs="*")
     p.add_argument("--veri", required=True); p.add_argument("--bolme", default="veri/bolme")

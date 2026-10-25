@@ -3,7 +3,8 @@
 veri.py — Tek Dataset sınıfı: herkes aynı girdiyi aynı biçimde görür (PROTOKOL madde 3).
 
 Girdi: onisle.py çıktısı `.npy` (float16, boyut³) + bölme CSV (denek_id, dosya, sinif[, yas, cinsiyet, bolum]).
-Görev: 'ikili' → yalnız sinif ∈ {0 (NC), 2 (AD)} satırları, etiket 0/1 ; 'uc' → 0/1/2.
+Görev: 'ikili' → NC vs AD (sinif 0 ve 2) · 'ikili-mci' → NC vs MCI (sinif 0 ve 1) · 'uc' → NC/MCI/AD.
+Her ikili görevde pozitif sınıf (AD ya da MCI) etiket 1, kontrol 0 olur; metrikler buna göre hesaplanır.
 Artırma (yalnız egitim=True): sol-sağ çevirme, küçük rastgele afin (MONAI varsa), yoğunluk kaydırma/ölçek.
 Rastgelelik: artırma RNG'si her DataLoader işçisinde `torch.initial_seed()`ten türetilir (işçiler aynı diziyi
 üretmesin, dizi her epoch değişsin) ve MONAI RandAffine `set_random_state` ile tohumlanır — PROTOKOL madde 10.
@@ -20,20 +21,28 @@ from torch.utils.data import DataLoader, Dataset
 SINIF_AD = {0: "NC", 1: "MCI", 2: "AD"}
 
 
+GOREVLER = {
+    "ikili": ((0, 2), 2, "NC vs AD — PROTOKOL madde 4 birincil görev"),
+    "ikili-mci": ((0, 1), 1, "NC vs MCI — erken evre; AD deneği yetersiz olan setlerde koşulabilir"),
+    "uc": ((0, 1, 2), None, "NC / MCI / AD — ikincil görev"),
+}
+
+
 def gorev_filtrele(df: pd.DataFrame, gorev: str) -> pd.DataFrame:
     df = df.copy()
-    if gorev == "ikili":
-        df = df[df["sinif"].isin([0, 2])].copy()
-        df["etiket"] = (df["sinif"] == 2).astype(int)
-    elif gorev == "uc":
+    if gorev not in GOREVLER:
+        raise ValueError("gorev: " + " | ".join(GOREVLER))
+    siniflar, pozitif, _ = GOREVLER[gorev]
+    df = df[df["sinif"].isin(siniflar)].copy()
+    if pozitif is None:                      # üç sınıf: etiket = sınıf kodu
         df["etiket"] = df["sinif"].astype(int)
-    else:
-        raise ValueError("gorev: ikili | uc")
+    else:                                    # ikili: pozitif sınıf 1, diğeri 0
+        df["etiket"] = (df["sinif"] == pozitif).astype(int)
     return df.reset_index(drop=True)
 
 
 def sinif_sayisi(gorev: str) -> int:
-    return 2 if gorev == "ikili" else 3
+    return 3 if gorev == "uc" else 2
 
 
 class HacimVeriSeti(Dataset):

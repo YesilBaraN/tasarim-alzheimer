@@ -153,6 +153,234 @@ python uygulama\ortakolme.py birlestir --girdi veri\ds007561_etiket.csv veri\ds
   kat ağırlıklı olarak tek bir tarayıcıdan gelir ve o katın sonucu merkez etkisini ölçer. Hücrelerden biri kat
   sayısından küçükse bu mümkün olmaz → yalnız sınıfa göre dengelenir ve bu durum ekrana yazılır.
 
+## 2e. Adı geçen üç Kaggle seti — tek tek incelendi (25.10.2026)
+
+Ekipten "şu setlere baktın mı" diye sorulan üç set, kendi açıklama metinleri okunarak değerlendirildi.
+Üçü de reddedildi ama **sebepleri farklı**; aşağıda her biri kendi gerekçesiyle.
+
+### 1. `ninadaithal/imagesoasis` — gerçek OASIS, ama 2B JPG
+Kendi açıklamasından: *OASIS MRI veri seti, 80.000 görüntü, **461 hasta**. Özgün `.img/.hdr` dosyaları FSL
+ile NIfTI'ye çevrilmiş. Sinir ağı eğitimi için **2B görüntüler** kullanılmış: beyin z ekseninde 256 dilime
+bölünmüş, her hastadan **100–160 arası dilimler** seçilmiş. Sınıflar **CDR** değerlerinden türetilmiş.
+`.nii` taramalar **`.jpg`'ye çevrilmiş**.*
+
+Üçü ciddi, biri ölümcül:
+- **2B JPG.** Bizim altı modelimiz de 3B hacim alıyor (VoxCNN, VoxResNet, MedicalNet ResNet-18, ResAttNet,
+  FCN, DenseNet121). 2B dilim bu ağlara girmez.
+- **JPG dönüşümü yıkıcı.** 8 bit, kayıplı sıkıştırma. MRI yoğunlukları nicel veridir; z-score, N4 bias
+  düzeltme ve atrofi ölçümü JPG'den sonra anlamını yitirir.
+- **Hasta başına ~173 dilim.** 80.000 / 461 ≈ 173. Görüntü düzeyinde rastgele bölersen aynı hastanın
+  dilimleri hem eğitimde hem testte olur — Yagis 2021 [P05] bunun doğruluğu **25–55 puan** şişirdiğini
+  ölçtü. PROTOKOL madde 1 (denek düzeyinde bölme) bu veriyle uygulanamaz.
+- **OASIS yeniden dağıtımı.** Kaynak açıkça OASIS; OASIS Data Use Terms üçüncü tarafa dağıtımı yasaklar.
+
+**Ama bu set bir şeyi doğru gösteriyor:** OASIS gerçekten bizim istediğimiz veri. Doğru yol onu
+oasis-brains.org formundan almak (`§2`), ki zaten başvuru listemizde — **henüz gönderilmedi** (`SUREC §9` satır 7).
+
+### 2. `mohiburrahmanrifat/alzheimer` — sızıntı açıkça ilan edilmiş
+6.336 görüntü: 3.200 Non_Demented · 2.240 Very_Mild · 896 Mild. Bu sayılar `tourist55/alzheimers-dataset-4-class-of-images`
+setinin sayılarıdır (Moderate sınıfı çıkarılmış hâli). Açıklamasında şu cümle geçiyor:
+
+> *"The dataset has been randomly divided into training, validation, and testing subsets using a fixed random seed."*
+
+**Görüntü düzeyinde rastgele bölme.** Dilimler hastalardan geliyor ve hasta kimliği yok; dolayısıyla bu
+hazır bölme sızıntı içeriyor ve düzeltilemez. Bu setle üretilen her doğruluk şişkindir. Sabit tohum
+tekrarlanabilirlik sağlar ama **yanlışı tekrarlanabilir kılar**, doğru yapmaz.
+
+### 3. `uraninjo/augmented-alzheimer-mri-dataset` — en ağır sızıntı
+Kendi açıklamasından: *"Data is augmented from an existing dataset"* — kaynak yine `tourist55`. Artırılmış
+(döndürülmüş, kaydırılmış) kopyalar özgün görüntülerle aynı havuzda. Rastgele bölünce **aynı görüntünün
+artırılmış kopyası** hem eğitimde hem testte oluyor. Bu, dilim sızıntısından da beter: model ezberlediği
+görüntünün kopyasını test ediyor.
+
+### Üçünün ortak sorunu, tek cümlede
+Hiçbirinde **denek kimliği** yok. PROTOKOL'ün 1. maddesi "bölme her zaman denek düzeyinde" diyor ve bu
+veriyle o madde **uygulanamaz** — isteğe bağlı değil, teknik olarak imkânsız. Projenin tezi sızıntısız
+değerlendirme olduğu için, bu setlerle çalışmak raporun literatür bölümüyle yöntem bölümünü çelişkiye düşürür.
+
+## 2f. ANMerge / AddNeuroMed (Synapse syn22252881) — incelendi, elendi (25.10.2026)
+
+Ekipten önerilen aday. **Gerçek ve ciddi bir kohort:** AddNeuroMed konsorsiyumunun boylamsal çalışması,
+**1702 katılımcı**, çok modlu (klinik, MRI, genotip, transkriptom, proteom, metabolom).
+Yayın: *ANMerge: A comprehensive and accessible Alzheimer's disease patient-level dataset*,
+J. Alzheimer's Disease (2020).
+
+**Ama MRI verisi görüntü değil, tablo.** Synapse ağacı okunarak doğrulandı:
+
+| Klasör | İçerik |
+|---|---|
+| `Data/MRI/` | `ANMerge_MRI_FS5.3_under_90.csv` · `ANMerge_MRI_FS6.0_under_90.csv` |
+| `Data/Raw Data/MRI/` | `MRI_AddNeuroMedFS-5.3-6.0.xlsx` |
+
+`FS` = **FreeSurfer**. Yani bunlar bölgesel hacim ve kortikal kalınlık **ölçümleri**; hiçbir yerde NIfTI,
+DICOM ya da Analyze hacmi yok. Erişim ayrıca Synapse hesabı istiyor (dosya indirme 403 döndü).
+
+**Sonuç: bizim altı 3B modelimiz için kullanılamaz.** Hepsi 3B konvolüsyon ile ham hacim işliyor;
+FreeSurfer tablosu bu ağlara girmez.
+
+**Ama boşa da değil — iki yerde işe yarar:**
+1. **Öznitelik tabanlı temel çizgi.** PROTOKOL madde 9 voksel SVM'i zaten istiyor; ROI hacimleriyle
+   (hipokampüs, entorinal korteks) çalışan klasik bir sınıflandırıcı, 3B CNN'lerin gerçekten değer katıp
+   katmadığını sınamak için güçlü bir karşılaştırma noktası. Wen 2020'nin hipokampüs-ROI referansı **0,89**
+   tam olarak bu aileden.
+2. **Literatür/tartışma bölümü.** 1702 denekle bile MRI'ın tablo hâlinde paylaşılması, ham görüntü
+   paylaşımının neden nadir olduğunu gösteren somut bir örnek.
+
+**Not:** bu bulgu bir desen gösteriyor — büyük AD kohortları ham görüntüyü değil **türetilmiş ölçümü**
+paylaşıyor (ANMerge, ayrıca EPAD'ın bulut çalışma alanı). Ham 3B hacme erişimin yolu neredeyse her zaman
+başvuru + DUA: ADNI, OASIS, AIBL. `ARAMA-PROMPTU.md`'ye bu şart (3B hacim zorunlu) zaten yazılı.
+
+## 2g. ⭐ `radiata-ai/brain-structure` (HuggingFace) — ARADIĞIMIZ VERİ (25.10.2026)
+
+Ekipten önerildi, incelendi ve **şimdiye kadarki en iyi aday**. İlk kez ciddi bir AD grubu var.
+
+**Nedir:** Radiata'nın beş açık çalışmayı (DLBS, IXI, NKI-RS, **OASIS-1**, **OASIS-2**) tek bir hatta
+işleyip birleştirdiği koleksiyon. **3794 tarama, 2607 denek.** Hepsi 3B NIfTI T1w MPRAGE,
+**kafatası ayıklanmış ve MNI152'ye afin hizalanmış**, 113×137×113 @ 1,5 mm.
+
+### Tanı × çalışma (tarama sayısı)
+| Çalışma | AD | Sağlıklı |
+|---|---|---|
+| DLBS | 0 | 315 |
+| IXI | 0 | 409 |
+| NKI-RS | 0 | 2283 |
+| **OASIS-1** | **100** | 314 |
+| **OASIS-2** | **165** | 208 |
+
+### ⚠ Sınıf–kohort karışması ve çözümü
+AD **yalnız OASIS'ten** geliyor; IXI/DLBS/NKI-RS tamamen sağlıklı. Tüm koleksiyonu olduğu gibi
+kullanırsak model hastalığı değil **tarayıcıyı** öğrenir (`§2d`'deki tuzağın ta kendisi).
+
+**Çözüm: yalnız OASIS-1 + OASIS-2 alt kümesiyle çalışmak.** Orada her iki sınıf da aynı kohortlarda var:
+
+```
+787 tarama · 564 denek
+denek düzeyinde:  165 Alzheimer  ·  399 sağlıklı
+```
+
+### Dikkat edilecek üç şey
+1. **Yaş uçurumu.** AD 76,0 ± 7,0 (61–96) · sağlıklı 51,8 ± 24,9 (**18**–94). OASIS-1 genç yetişkin de
+   içeriyor. Kontroller ≥60 yaşa süzülüp `eslestir.py` ile yaş/cinsiyet eşleştirilmeli; yoksa model
+   yaşı öğrenir.
+2. **Boylamsal.** 94 denekte 2, 43 denekte 3, 13 denekte 4–5 tarama var. Denek başına tek tarama alınmalı
+   ya da bölme denek düzeyinde yapılmalı (PROTOKOL madde 1 — `bolme.py` zaten öyle yapıyor).
+3. **Depodaki hazır train/val/test bölmesi KULLANILMAYACAK.** Tarama düzeyinde görünüyor; aynı deneğin
+   iki taraması farklı kümelere düşebilir. Kendi `bolme.py`'mizle denek düzeyinde böleceğiz.
+
+### Ön işleme: bizim hattımızı atlıyor
+Taramalar zaten kafatası ayıklanmış ve MNI'ye hizalanmış. Bu **sorun değil, avantaj**: beş çalışma tek bir
+hatla uyumlulaştırılmış, yani PROTOKOL madde 3'ün istediği "herkes aynı ön işleme" sağlanıyor — yeter ki
+tüm veri buradan gelsin. Bizim `onisle.py` zincirimiz bu veri için **atlanır**; yalnız 128³'e yeniden
+boyutlandırma ve z-score uygulanır.
+
+### Lisans — bilinçli karar gerektirir
+Koleksiyonun kendisi **ODC-By v1.0**, ama kart açıkça şunu diyor: *"Individual scans are licensed under
+study-specific data use agreements"* ve OASIS-1/OASIS-2 için **Custom DUA** gösteriyor. Yani AD taramaları
+OASIS verisidir ve OASIS'in kendi şartlarına tabidir.
+
+**Ekibin durumu:** OASIS başvurusu **yapıldı** (bkz. `SUREC.md §9` satır 7). Onay geldiğinde bu veriyi
+kullanma hakkı zaten doğmuş olacak; bu koleksiyon o süreçte **erken başlamayı** sağlıyor.
+Raporun yöntem bölümünde kaynak açıkça yazılmalı: *"OASIS-1/OASIS-2 taramaları, Radiata'nın
+uyumlulaştırılmış dağıtımı üzerinden; OASIS veri kullanım başvurusu <tarih>'te yapıldı."*
+Gizlenecek bir şey yok, yazıldığı sürece savunulabilir.
+
+### Tam kohort tablosu (denek düzeyinde, ölçüldü)
+| Çalışma | Denek | AD | CN | Yaş ort | Yaş aralığı | Tarayıcı |
+|---|---|---|---|---|---|---|
+| DLBS | 315 | 0 | 315 | 54,1 | 20–89 | Philips Achieva **3T** |
+| IXI | 409 | 0 | 409 | 50,1 | 19–86 | GE/Philips **1,5T ve 3T karışık** |
+| NKI-RS | 1319 | 0 | 1319 | 38,7 | 6–85 | Siemens TrioTim **3T** |
+| **OASIS-1** | 414 | **100** | 314 | 52,9 | 18–96 | **Siemens Vision 1,5T** |
+| **OASIS-2** | 150 | **65** | 85 | 75,4 | 60–96 | **Siemens Vision 1,5T** |
+
+**Kritik avantaj:** OASIS-1 ve OASIS-2 **aynı tarayıcıyı** kullanıyor (Siemens Vision, 1,5T). Yani ikisini
+birleştirmek tarayıcı karıştırıcısı yaratmıyor. Diğer üç kohort farklı cihaz ve alan gücünde — onları AD
+görevine karıştırmak sınıf–tarayıcı karışması demek olurdu.
+
+### Tek süzgeç her şeyi çözüyor: yaş ≥ 60
+| Süzgeç | Denek | AD | CN | Oran |
+|---|---|---|---|---|
+| ham | 564 | 165 | 399 | 2,42:1 |
+| yaş ≥ 55 | 364 | 165 | 199 | 1,21:1 |
+| **yaş ≥ 60** | **348** | **165** | **183** | **1,11:1** |
+| yaş ≥ 65 | 324 | 158 | 166 | 1,05:1 |
+
+**Yaş ≥ 60 seçilince:**
+```
+AD  165 denek · yaş 76,0 ± 7,0
+CN  183 denek · yaş 75,9 ± 8,6
+yaş farkı p = 0,8352  →  ZATEN DENGELİ, eşleştirmeye gerek yok
+kohort: OASIS-1 100 AD / 98 CN · OASIS-2 65 AD / 85 CN  →  her iki sınıf her iki kohortta
+```
+ds007857'de yaş karıştırıcısı vardı ve `eslestir.py` ile düzeltmek gerekmişti; burada **yaş süzgeci
+yeterli**. Geriye tek dengesizlik **cinsiyet** kalıyor: AD %53 kadın, CN %72 kadın. İki seçenek —
+(a) `eslestir.py --oran 1.0` ile cinsiyet de eşleştirilir (yaklaşık 140 AD + 140 CN kalır),
+(b) 348 denek korunur ve cinsiyet raporda ortak değişken olarak belirtilir. Literatürde ikisi de kabul görüyor.
+
+### Uzun vade: üç ayrı kullanım
+Bu koleksiyon tek bir iş için değil, **üç ayrı iş** için değerli:
+
+**1. Ana görev — AD vs NC.** OASIS alt kümesi, yaş ≥ 60: 165 AD + 183 CN. ADNI gelene kadar asıl görevde
+çalışmayı sağlar; ADNI gelince bu küme **dış test** setine dönüşür (PROTOKOL "Dış test" bölümü).
+
+**2. Ön eğitim havuzu — 3007 tarama / 2043 sağlıklı denek** (DLBS + IXI + NKI-RS, yaş 6–89).
+AD etiketi yok ama **etiket gerekmiyor**: bu tam olarak **P15 (Dhinagar 2023, Ertuğrul'un makalesi)**
+konusu — 3B mimarileri ön eğitip küçük hedef sete aktarmak. Ayrıca beyin-yaşı tahminiyle ön eğitim
+(sağlıklı beyinden yaş kestir → AD'ye aktar) literatürde güçlü bir strateji. Bu havuz, P02'nin MedicalNet
+transferine **kendi verimizle yapılmış bir alternatif** sunar ve ablation'a girer:
+*sıfırdan vs MedicalNet vs kendi havuzumuzda ön eğitilmiş.*
+
+**3. Çoklu-merkez genelleme.** Beş kohort, dört farklı tarayıcı, 1,5T ve 3T. Merkez etkisinin sonucu ne kadar
+bozduğunu ölçmek için hazır bir düzenek — Wen 2020 ve Bron 2021'in genelleme tartışmasının tam konusu.
+
+### Radiata'nın ön işleme hattı — rapor yöntem bölümü için
+Veri kartındaki *Methods* bölümünden birebir (yöntem bölümüne bu yazılacak, "bir şekilde işlenmiş" denmez):
+
+1. **Bias, gürültü ve yoğunluk düzeltmesi** — CAT12 (Gaser vd. 2024)
+2. **Beyin maskesi** — CAT12, gri madde + ak madde + BOS
+3. **Afin hizalama** — FSL FLIRT, 12 serbestlik derecesi,
+   hedef **`MNI152NLin2009cAsym` 1,5 mm**, `-noresampblur`
+4. Amaç: gürültüsü azaltılmış, **yumuşatılmamış**, standart uzaya hizalı ama bireysel anatomiyi koruyan hacim
+
+#### Bizim hattımızla karşılaştırma
+| Adım | `onisleme/onisle.py` | Radiata |
+|---|---|---|
+| Bias düzeltme | N4 (SimpleITK) | CAT12 |
+| Kafatası ayıklama | HD-BET | CAT12 (GM+WM+BOS) |
+| Hizalama | SimpleITK afin, Mattes MI, 3 seviye | FSL FLIRT, 12 DOF |
+| **Hedef şablon** | **MNI152NLin2009cAsym** | **MNI152NLin2009cAsym** |
+| Çözünürlük | şablon ızgarası | 1,5 mm |
+
+**Şablon aynı.** Bu beklenmedik bir şans: iki hat farklı araçlar kullanıyor ama **aynı standart uzayı**
+hedefliyor, dolayısıyla çıktılar anatomik olarak hizalı. Fark bias düzeltme ve maske yönteminde kalıyor.
+
+#### ⚠ ADNI geldiğinde ne yapılacak
+ADNI bizim hattımızdan (HD-BET + N4 + SimpleITK) geçecek, OASIS ise Radiata'nın hattından geçmiş olacak.
+İkisini aynı tabloda karşılaştırmak **hat farkını kohort farkıyla karıştırır**. İki seçenek:
+
+- **(a) Tercih edilen:** OASIS erişimi onaylandığında **ham OASIS indirilip bizim hattımızdan geçirilir.**
+  Böylece her şey tek hatla üretilir ve PROTOKOL madde 3 tam anlamıyla sağlanır. Radiata sürümü o ana
+  kadar **erken başlama** aracıdır.
+- **(b)** Radiata sürümü korunursa, ADNI–OASIS karşılaştırmasında hat farkı raporda açıkça belirtilir ve
+  dış test sonucu bu uyarıyla sunulur.
+
+Bu karar `SUREC.md §7`'de danışmana sorulacaklar arasına eklenmeli.
+
+#### Veri kartından iki ek bilgi
+- **Bölme denek düzeyinde:** *"Subjects with multiple scans only appear in one split."* Yani depodaki
+  80/10/10 bölmesi sızıntılı değil. Yine de **kendi bölmemizi üreteceğiz**, çünkü PROTOKOL 5 kat CV istiyor.
+- **IQR yönü belli:** *"image quality rating (IQR; larger value = worse quality)"* — **büyük değer kötü.**
+  Kalite süzgeci istenirse `metadata.csv`'deki `image_quality_rating` ile uygulanabilir.
+
+### İndirme planı
+| Ne | Tarama | Boyut | Ne zaman |
+|---|---|---|---|
+| OASIS-1 + OASIS-2 (tümü, boylamsal dahil) | 787 | ~1,6 GB | **şimdi** — ana görev |
+| Sağlıklı ön eğitim havuzu | 3007 | ~6,3 GB | P15 implementasyonuna gelince |
+
+Boylamsal taramalar da iniyor çünkü ileride aynı deneğin zaman içindeki değişimi (atrofi hızı) ayrı bir
+analiz olabilir; denek düzeyinde bölme bunu zaten güvenli kılıyor.
+
 ## 3. Etiket kuralları
 ### 3.1 ADNI1 (ADNIMERGE.csv, `VISCODE == "bl"`)
 | `DX_bl` | Bizim sınıf | Not |

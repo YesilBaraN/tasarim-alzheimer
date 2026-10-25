@@ -71,7 +71,8 @@ Rapor bölümleri: Giriş (Baran) · Literatür (herkes, kendi 5'i) · Gereksini
 4. Yönerge Madde 8 proje türü: TÜBİTAK 2209-A başvurusu yapmamızı ister mi?
 5. Karar destek "prototipi" beklentisi: basit web arayüzü (yükle → tahmin + ısı haritası) yeterli mi, yoksa DICOM görüntüleyici entegrasyonu mu?
 6. Ortak veri setinin ekip içinde paylaşımı: DUA gereği ham veri dağıtılamıyor; herkes kendi IDA hesabıyla mı indirsin, yoksa ön işlenmiş tensörler mi paylaşılsın (ADNI'ye sorulacak)?
-7. **Hesaplama bütçesi (kritik):** tam protokol 9 model × 2 görev × 5 kat × 3 tohum = **270 koşu ≈ 270–540 GPU-saat**; elimizdeki ücretsiz bütçe 3 hesap × ~30 GPU-saat/hafta × 8 hafta ≈ 720 saat tavan, hata payı yok. Öneri: birincil görevde (AD-NC) 5 kat × 3 tohum korunur, **ikincil üç sınıf görevinde 5 kat × 1 tohum** koşulur ve raporda açıkça yazılır; LR taraması yalnız kat 0'da yapılır. Kabul eder mi? Bölümün GPU sunucusu/kümesi kullanıma açık mı? Hesap ve öncelik katmanları: `karsilastirma/KOSU-PLANI.md`.
+7. **Ön işleme kaynağı:** OASIS taramalarını Radiata'nın hazır (CAT12 + FLIRT, MNI152NLin2009cAsym) sürümünden mi alalım, yoksa onay gelince ham OASIS'i indirip kendi hattımızdan (HD-BET + N4 + SimpleITK) mı geçirelim? İkincisi tek hat demek ve PROTOKOL madde 3'ü tam sağlıyor, ama ~3,5 saat ön işleme ve onay beklemek demek. Hedef şablon ikisinde de aynı (`MNI152NLin2009cAsym`). Ayrıntı: `veri/VERI-SETI.md §2g`.
+8. **Hesaplama bütçesi (kritik):** tam protokol 9 model × 2 görev × 5 kat × 3 tohum = **270 koşu ≈ 270–540 GPU-saat**; elimizdeki ücretsiz bütçe 3 hesap × ~30 GPU-saat/hafta × 8 hafta ≈ 720 saat tavan, hata payı yok. Öneri: birincil görevde (AD-NC) 5 kat × 3 tohum korunur, **ikincil üç sınıf görevinde 5 kat × 1 tohum** koşulur ve raporda açıkça yazılır; LR taraması yalnız kat 0'da yapılır. Kabul eder mi? Bölümün GPU sunucusu/kümesi kullanıma açık mı? Hesap ve öncelik katmanları: `karsilastirma/KOSU-PLANI.md`.
 
 ## 8. ADNI başvurusu için danışmana e-posta taslağı
 > Sayın Hocam,
@@ -93,7 +94,7 @@ Rapor bölümleri: Giriş (Baran) · Literatür (herkes, kendi 5'i) · Gereksini
 | 4 | P06–P10 inceleme | Görkem | ☐ başlamadı | — | `devir/DEVIR-GORKEM.md` |
 | 5 | P11–P15 inceleme | Ertuğrul | ☐ başlamadı | — | `devir/DEVIR-ERTUGRUL.md` |
 | 6 | ADNI başvurusu | Baran + danışman | ☐ başlamadı | — | e-posta taslağı §8 |
-| 7 | OASIS-1 erişim isteği (**her üye kendi adına**, kurumsal e-posta + araştırma açıklaması) | herkes | ☐ başlamadı | — | https://sites.wustl.edu/oasisbrains/home/access/ · DUA paylaşımı yasaklar |
+| 7 | OASIS-1 erişim isteği (**her üye kendi adına**, kurumsal e-posta + araştırma açıklaması) | herkes | 🔄 **başvuru yapıldı**, onay bekleniyor | 25.10 | https://sites.wustl.edu/oasisbrains/home/access/ · DUA paylaşımı yasaklar |
 | 7b | ADNI'ye Baran'ın kendi başvurusu (danışmanınkiyle paralel) + OpenNeuro ds007561 kontrolü + IXI indirme (kod testi) | Baran | ☐ başlamadı | — | `veri/VERI-SETI.md §2b` |
 | 8 | Ortam kurulumu (kendi PC) | herkes | 🔄 Baran: ✅ kuruldu, 3 test takımı yeşil (CPU torch) | 25.10 | `KURULUM.md` · GPU için cu126 ile yeniden kurulacak · **Görkem/Ertuğrul henüz kurmadı** |
 | 8b | Git deposu + GitHub + CI | Baran | ✅ bitti | 25.10 | https://github.com/YesilBaraN/tasarim-alzheimer (public) · her push'ta Windows+Linux uçtan uca test, iki koşu da yeşil · koşu kayıtlarına commit hash'i düşüyor |
