@@ -1,0 +1,89 @@
+{
+ "ad": "ortak-sigcnn_prova_ikili-mci_t2026_k0_lr3e-04_b128",
+ "model": "ortak",
+ "varyant": "sigcnn",
+ "set": "prova",
+ "gorev": "ikili-mci",
+ "kat": 0,
+ "tohum": 2026,
+ "lr": 0.0003,
+ "boyut": 128,
+ "etiket": "",
+ "model_notu": "",
+ "on_egitim": false,
+ "agirlik": null,
+ "ayar": {
+  "epoch": 40,
+  "lr": 0.0003,
+  "batch": 4,
+  "accum": 1,
+  "sabir": 10,
+  "wd": 0.0001,
+  "amp": true,
+  "boyut": 128,
+  "isci": 2,
+  "optimizer": "adamw",
+  "isinma": 0
+ },
+ "parametre": 73162,
+ "cihaz": "cuda",
+ "gpu": "NVIDIA GeForce RTX 3050 Laptop GPU",
+ "vram_gb": 0.86,
+ "sure_sn": 285.9,
+ "epoch_kosulan": 11,
+ "en_iyi_epoch": 0,
+ "dogrulama": {
+  "acc": 0.375,
+  "bacc": 0.5,
+  "f1_makro": 0.2727272727272727,
+  "cm": [
+   [
+    0,
+    15
+   ],
+   [
+    0,
+    9
+   ]
+  ],
+  "n": 24,
+  "auc": 0.6814814814814815,
+  "sens": 1.0,
+  "spec": 0.0
+ },
+ "test": {
+  "acc": 0.4090909090909091,
+  "bacc": 0.5,
+  "f1_makro": 0.2903225806451613,
+  "cm": [
+   [
+    0,
+    13
+   ],
+   [
+    0,
+    9
+   ]
+  ],
+  "n": 22,
+  "auc": 0.641025641025641,
+  "sens": 1.0,
+  "spec": 0.0
+ },
+ "commit": "bf3ce96",
+ "torch": "2.14.1+cu126",
+ "surumler": {
+  "python": "3.12.10",
+  "torch": "2.14.1+cu126",
+  "cuda": "12.6",
+  "cudnn": "91002",
+  "monai": "1.6.1",
+  "numpy": "2.5.2",
+  "scikit-learn": "1.9.1",
+  "pandas": "3.1.0",
+  "SimpleITK": "2.5.6",
+  "nibabel": "5.4.2",
+  "onnxruntime": "1.31.0"
+ },
+ "deterministic": true
+}
