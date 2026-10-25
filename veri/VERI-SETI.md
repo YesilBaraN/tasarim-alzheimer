@@ -284,6 +284,64 @@ Raporun yöntem bölümünde kaynak açıkça yazılmalı: *"OASIS-1/OASIS-2 tar
 uyumlulaştırılmış dağıtımı üzerinden; OASIS veri kullanım başvurusu <tarih>'te yapıldı."*
 Gizlenecek bir şey yok, yazıldığı sürece savunulabilir.
 
+### Tam kohort tablosu (denek düzeyinde, ölçüldü)
+| Çalışma | Denek | AD | CN | Yaş ort | Yaş aralığı | Tarayıcı |
+|---|---|---|---|---|---|---|
+| DLBS | 315 | 0 | 315 | 54,1 | 20–89 | Philips Achieva **3T** |
+| IXI | 409 | 0 | 409 | 50,1 | 19–86 | GE/Philips **1,5T ve 3T karışık** |
+| NKI-RS | 1319 | 0 | 1319 | 38,7 | 6–85 | Siemens TrioTim **3T** |
+| **OASIS-1** | 414 | **100** | 314 | 52,9 | 18–96 | **Siemens Vision 1,5T** |
+| **OASIS-2** | 150 | **65** | 85 | 75,4 | 60–96 | **Siemens Vision 1,5T** |
+
+**Kritik avantaj:** OASIS-1 ve OASIS-2 **aynı tarayıcıyı** kullanıyor (Siemens Vision, 1,5T). Yani ikisini
+birleştirmek tarayıcı karıştırıcısı yaratmıyor. Diğer üç kohort farklı cihaz ve alan gücünde — onları AD
+görevine karıştırmak sınıf–tarayıcı karışması demek olurdu.
+
+### Tek süzgeç her şeyi çözüyor: yaş ≥ 60
+| Süzgeç | Denek | AD | CN | Oran |
+|---|---|---|---|---|
+| ham | 564 | 165 | 399 | 2,42:1 |
+| yaş ≥ 55 | 364 | 165 | 199 | 1,21:1 |
+| **yaş ≥ 60** | **348** | **165** | **183** | **1,11:1** |
+| yaş ≥ 65 | 324 | 158 | 166 | 1,05:1 |
+
+**Yaş ≥ 60 seçilince:**
+```
+AD  165 denek · yaş 76,0 ± 7,0
+CN  183 denek · yaş 75,9 ± 8,6
+yaş farkı p = 0,8352  →  ZATEN DENGELİ, eşleştirmeye gerek yok
+kohort: OASIS-1 100 AD / 98 CN · OASIS-2 65 AD / 85 CN  →  her iki sınıf her iki kohortta
+```
+ds007857'de yaş karıştırıcısı vardı ve `eslestir.py` ile düzeltmek gerekmişti; burada **yaş süzgeci
+yeterli**. Geriye tek dengesizlik **cinsiyet** kalıyor: AD %53 kadın, CN %72 kadın. İki seçenek —
+(a) `eslestir.py --oran 1.0` ile cinsiyet de eşleştirilir (yaklaşık 140 AD + 140 CN kalır),
+(b) 348 denek korunur ve cinsiyet raporda ortak değişken olarak belirtilir. Literatürde ikisi de kabul görüyor.
+
+### Uzun vade: üç ayrı kullanım
+Bu koleksiyon tek bir iş için değil, **üç ayrı iş** için değerli:
+
+**1. Ana görev — AD vs NC.** OASIS alt kümesi, yaş ≥ 60: 165 AD + 183 CN. ADNI gelene kadar asıl görevde
+çalışmayı sağlar; ADNI gelince bu küme **dış test** setine dönüşür (PROTOKOL "Dış test" bölümü).
+
+**2. Ön eğitim havuzu — 3007 tarama / 2043 sağlıklı denek** (DLBS + IXI + NKI-RS, yaş 6–89).
+AD etiketi yok ama **etiket gerekmiyor**: bu tam olarak **P15 (Dhinagar 2023, Ertuğrul'un makalesi)**
+konusu — 3B mimarileri ön eğitip küçük hedef sete aktarmak. Ayrıca beyin-yaşı tahminiyle ön eğitim
+(sağlıklı beyinden yaş kestir → AD'ye aktar) literatürde güçlü bir strateji. Bu havuz, P02'nin MedicalNet
+transferine **kendi verimizle yapılmış bir alternatif** sunar ve ablation'a girer:
+*sıfırdan vs MedicalNet vs kendi havuzumuzda ön eğitilmiş.*
+
+**3. Çoklu-merkez genelleme.** Beş kohort, dört farklı tarayıcı, 1,5T ve 3T. Merkez etkisinin sonucu ne kadar
+bozduğunu ölçmek için hazır bir düzenek — Wen 2020 ve Bron 2021'in genelleme tartışmasının tam konusu.
+
+### İndirme planı
+| Ne | Tarama | Boyut | Ne zaman |
+|---|---|---|---|
+| OASIS-1 + OASIS-2 (tümü, boylamsal dahil) | 787 | ~1,6 GB | **şimdi** — ana görev |
+| Sağlıklı ön eğitim havuzu | 3007 | ~6,3 GB | P15 implementasyonuna gelince |
+
+Boylamsal taramalar da iniyor çünkü ileride aynı deneğin zaman içindeki değişimi (atrofi hızı) ayrı bir
+analiz olabilir; denek düzeyinde bölme bunu zaten güvenli kılıyor.
+
 ## 3. Etiket kuralları
 ### 3.1 ADNI1 (ADNIMERGE.csv, `VISCODE == "bl"`)
 | `DX_bl` | Bizim sınıf | Not |
