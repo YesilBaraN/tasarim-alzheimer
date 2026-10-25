@@ -2,6 +2,11 @@
 """
 onisle.py — T1 sMRI ön işleme hattı (kafatası ayıklama → N4 → MNI152 afin kayıt → z-score → 128³).
 
+`--kafatasi hazir --kayit yok`: kaynak veri **zaten** kafatası ayıklanmış ve MNI'ye hizalanmışsa
+(ör. `radiata-ai/brain-structure`) HD-BET, N4 ve kayıt atlanır; yalnız maske (voksel > 0), maske içi
+z-score ve kırpma/yeniden boyutlandırma uygulanır. Hacim başına saniyeler sürer. PROTOKOL madde 3
+bozulmaz: tüm veri aynı kaynaktan ve aynı hatla geldiği sürece herkes aynı girdiyi görür.
+
 Adım sırası Wen 2020'nin t1-linear hattıyla aynı: normalizasyon **kayıttan sonra** yapılır. Kayıt doğal
 yoğunluklarla çalışır, z-score ise son ızgarada şablonun beyin maskesi içinde hesaplanır (herkeste aynı maske).
 
@@ -211,6 +216,18 @@ def kafatasi_ayikla(img: sitk.Image, cihaz: str = "cpu") -> tuple[sitk.Image, si
     return beyin, maske
 
 
+def maske_hazir(img: sitk.Image) -> sitk.Image:
+    """Zaten kafatası ayıklanmış hacimde maske = sıfırdan büyük vokseller.
+
+    Eşik tahmini gerekmiyor: ayıklama sırasında arka plan tam sıfıra çekilmiş oluyor.
+    `maske_uret_basit`in yüzdelik eşiği burada beyin kenarlarını kırpardı.
+    """
+    arr = sitk.GetArrayFromImage(img)
+    maske = sitk.GetImageFromArray((arr > 0).astype(np.uint8))
+    maske.CopyInformation(img)
+    return maske
+
+
 def maske_uret_basit(img: sitk.Image) -> sitk.Image:
     """HD-BET yokken (ör. OASIS t88_masked dosyaları, sentetik test) basit eşik maskesi."""
     arr = sitk.GetArrayFromImage(img)
@@ -345,7 +362,9 @@ def hacmi_isle(girdi: Path, cikti_klasor: Path, ad: str, boyut: int = 128, kafat
     meta["adimlar"].append("oku"); meta["girdi_boyut"] = list(img.GetSize()); meta["girdi_aralik"] = list(img.GetSpacing())
 
     t = time.time()
-    if kafatasi == "hdbet":
+    if kafatasi == "hazir":
+        maske = maske_hazir(img)          # ayıklama ve hizalama veri kaynağında yapılmış
+    elif kafatasi == "hdbet":
         img, maske = kafatasi_ayikla(img, cihaz)
     else:
         maske = maske_uret_basit(img)
@@ -355,7 +374,10 @@ def hacmi_isle(girdi: Path, cikti_klasor: Path, ad: str, boyut: int = 128, kafat
     if not (900 <= hacim_cm3 <= 1900) and kafatasi == "hdbet":
         meta["uyarilar"].append("maske_hacmi")
 
-    t = time.time(); img = n4_duzelt(img, maske); sureler["n4"] = time.time() - t; meta["adimlar"].append("n4")
+    if kafatasi == "hazir":
+        meta["adimlar"].append("n4:atlandi")   # kaynak hattı bias düzeltmesini zaten uygulamış
+    else:
+        t = time.time(); img = n4_duzelt(img, maske); sureler["n4"] = time.time() - t; meta["adimlar"].append("n4")
 
     # SIRA: kafatası → N4 → **kayıt** → z-score → kırpma. Normalizasyon kayıttan SONRA yapılır
     # (Wen 2020 t1-linear ile aynı): kayıt doğal yoğunluklarla çalışır ve z-score son ızgarada,
@@ -446,7 +468,9 @@ def main(argv=None):
     p.add_argument("--toplu", action="store_true")
     p.add_argument("--liste", default=None, help="yalnız bu listedeki dosyalar (etiket CSV'si ya da düz metin)")
     p.add_argument("--boyut", type=int, default=128)
-    p.add_argument("--kafatasi", choices=["hdbet", "yok"], default="hdbet")
+    p.add_argument("--kafatasi", choices=["hdbet", "yok", "hazir"], default="hdbet",
+                   help="hazir: veri zaten ayıklanmış ve hizalanmış (ör. radiata-ai/brain-structure) → "
+                        "yalnız maske + z-score + kırpma/boyutlandırma")
     p.add_argument("--kayit", choices=["sitk", "ants", "yok"], default="sitk")
     p.add_argument("--cihaz", default="cpu")
     p.add_argument("--nii", action="store_true")
