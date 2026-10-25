@@ -333,6 +333,45 @@ transferine **kendi verimizle yapılmış bir alternatif** sunar ve ablation'a g
 **3. Çoklu-merkez genelleme.** Beş kohort, dört farklı tarayıcı, 1,5T ve 3T. Merkez etkisinin sonucu ne kadar
 bozduğunu ölçmek için hazır bir düzenek — Wen 2020 ve Bron 2021'in genelleme tartışmasının tam konusu.
 
+### Radiata'nın ön işleme hattı — rapor yöntem bölümü için
+Veri kartındaki *Methods* bölümünden birebir (yöntem bölümüne bu yazılacak, "bir şekilde işlenmiş" denmez):
+
+1. **Bias, gürültü ve yoğunluk düzeltmesi** — CAT12 (Gaser vd. 2024)
+2. **Beyin maskesi** — CAT12, gri madde + ak madde + BOS
+3. **Afin hizalama** — FSL FLIRT, 12 serbestlik derecesi,
+   hedef **`MNI152NLin2009cAsym` 1,5 mm**, `-noresampblur`
+4. Amaç: gürültüsü azaltılmış, **yumuşatılmamış**, standart uzaya hizalı ama bireysel anatomiyi koruyan hacim
+
+#### Bizim hattımızla karşılaştırma
+| Adım | `onisleme/onisle.py` | Radiata |
+|---|---|---|
+| Bias düzeltme | N4 (SimpleITK) | CAT12 |
+| Kafatası ayıklama | HD-BET | CAT12 (GM+WM+BOS) |
+| Hizalama | SimpleITK afin, Mattes MI, 3 seviye | FSL FLIRT, 12 DOF |
+| **Hedef şablon** | **MNI152NLin2009cAsym** | **MNI152NLin2009cAsym** |
+| Çözünürlük | şablon ızgarası | 1,5 mm |
+
+**Şablon aynı.** Bu beklenmedik bir şans: iki hat farklı araçlar kullanıyor ama **aynı standart uzayı**
+hedefliyor, dolayısıyla çıktılar anatomik olarak hizalı. Fark bias düzeltme ve maske yönteminde kalıyor.
+
+#### ⚠ ADNI geldiğinde ne yapılacak
+ADNI bizim hattımızdan (HD-BET + N4 + SimpleITK) geçecek, OASIS ise Radiata'nın hattından geçmiş olacak.
+İkisini aynı tabloda karşılaştırmak **hat farkını kohort farkıyla karıştırır**. İki seçenek:
+
+- **(a) Tercih edilen:** OASIS erişimi onaylandığında **ham OASIS indirilip bizim hattımızdan geçirilir.**
+  Böylece her şey tek hatla üretilir ve PROTOKOL madde 3 tam anlamıyla sağlanır. Radiata sürümü o ana
+  kadar **erken başlama** aracıdır.
+- **(b)** Radiata sürümü korunursa, ADNI–OASIS karşılaştırmasında hat farkı raporda açıkça belirtilir ve
+  dış test sonucu bu uyarıyla sunulur.
+
+Bu karar `SUREC.md §7`'de danışmana sorulacaklar arasına eklenmeli.
+
+#### Veri kartından iki ek bilgi
+- **Bölme denek düzeyinde:** *"Subjects with multiple scans only appear in one split."* Yani depodaki
+  80/10/10 bölmesi sızıntılı değil. Yine de **kendi bölmemizi üreteceğiz**, çünkü PROTOKOL 5 kat CV istiyor.
+- **IQR yönü belli:** *"image quality rating (IQR; larger value = worse quality)"* — **büyük değer kötü.**
+  Kalite süzgeci istenirse `metadata.csv`'deki `image_quality_rating` ile uygulanabilir.
+
 ### İndirme planı
 | Ne | Tarama | Boyut | Ne zaman |
 |---|---|---|---|
