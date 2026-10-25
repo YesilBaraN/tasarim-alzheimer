@@ -173,3 +173,106 @@ Grup C ("Yama/FCN, DenseNet ve Transformer") kapsamındaki tüm makale incelemel
 - **Genel Durum:** 15 makale incelemesinin tamamı, Ara Rapor 2 gereksinim ve tasarım bölümlerinin tamamı, ve 6 model implementasyonunun (P01, P02, P06, P07, P11, P12) tamamı depoda hazırdır!
 - **Sıradaki Adım:** Baran Yeşilyurt'un Ara Rapor 2'yi bölüm şablonunda (`BSM401_Sablon_201611.docx`) birleştirmesi (İş 14), danışman görüşmesi ve ADNI/OASIS başvuru takibi.
 
+
+---
+
+## 6. Oturum — Gerçek veriyle AD vs NC koşusu (25.10.2026, Baran / Claude Code Opus)
+
+Bu oturumda proje ilk kez **asıl görevinde** (AD vs NC) gerçek veriyle koştu. Önceki prova
+NC vs MCI'daydı ve dört modelin hiçbiri öğrenmemişti; artık öğreniyorlar.
+
+### 6.1 Veri: 348 denek, gerçek AD tanısı
+`radiata-ai/brain-structure` koleksiyonundan OASIS-1 + OASIS-2 indirildi: **787 tarama, 1,6 GB**,
+hepsi işlendi (0,1 sn/hacim, 3,1 GB `.npy`, tek uyarı yok).
+
+`bolme.py`'ye **`etiket-radiata`** modu eklendi. Veri boylamsal olduğu için denek başına tek
+oturum seçmek gerekiyor; seçim Wen 2020 madde 2.2'ye göre:
+- **AD:** deneğin **ilk AD tanılı** oturumu (en geç oturum atrofiyi yapay büyütür; temel oturum
+  ise NC'ken çekilmiş görüntüyü AD etiketler),
+- **NC:** **yalnız kararlı NC** — hiçbir oturumunda AD tanısı almamış denekler,
+- OASIS-2'de **14 denek NC→AD dönüşüyor**; bunlar NC'den çıktı, AD'ye kendi AD oturumuyla girdi.
+
+Temel-oturum yaklaşımına göre ölçülebilir şekilde daha iyi: AD/NC 165/183 → **178/170**,
+yaş farkı p = 0,84 → **0,39**, OASIS-2 dengesi 65/85 → **78/72**.
+
+Bölme: test 53 · CV 295 · 5 kat, denek düzeyinde, kohort × sınıf dengeli, **sızıntı TEMİZ**.
+
+### 6.2 Karıştırıcı sorusu kapatıldı
+Cinsiyet dengesiz (AD %54 kadın, NC %72 kadın, Fisher p = 0,0009). Eşleştirme 348 deneği
+~210'a düşüreceği için uygulanmadı; yerine **ölçüldü**: yeni `karsilastirma/altgrup_analiz.py`
+yalnız demografiden AD tahmin eden lojistik regresyonun aynı test kümesindeki AUC'sini
+hesaplıyor → **0,354–0,418**, yani şans seviyesinin *altında*. VoxCNN'in 0,758'i bu tavanın
+0,34 üzerinde ve AUC cinsiyetten bağımsız (K 0,756 / E 0,750). **Model beyne bakıyor.**
+
+Araç ayrıca alt grup metrikleri (cinsiyet / kohort / yaş bandı) ve bootstrap %95 GA veriyor.
+
+### 6.3 Düzeltilen dört şey
+1. **VoxResNet 13 kat yavaştı.** Epoch başına 7 dakika (VoxCNN 32 sn). Ölçüm: batch 4'te
+   3,59 GB, kart 4,0 GB → Windows WDDM kalan belleği sistem RAM'ine taşıyor, program
+   çökmüyor ama sessizce yavaşlıyor. **"Sığdı" demek yetmiyor; eşik 4,0 değil ~3,0 GB.**
+   Dokuz yapılandırmanın hepsi b2/b4'te ölçüldü, `kos_oasis.py` tablosu buna göre kuruldu,
+   `expandable_segments` eklendi. Epoch 40 saniyeye döndü.
+2. **`tablo_uret.py` bütün sonuçlarımızı eliyordu** ("RTX 3050 geliştirme kartı" kuralı —
+   modellerin sığmadığı varsayımından kalma). Kural doğru değişmez üzerine kuruldu: dışlama
+   ölçütü artık **etkin batch (batch × accum) ve girdi boyutu**. Kart adı yalnızca not düşüyor.
+3. **Tek koşuda `±0,000` yazıyordu** — sapma sıfır değil, hesaplanamıyor. `(tek koşu)` oldu.
+4. **KURULUM'da P06 için yazdığım "0,14M parametre" yanlıştı** (bkz. 6.5).
+
+### 6.4 Kat 0 sonuçları (kısmi)
+| Model | Parametre | Test BAcc | Test AUC | Sens | Spec |
+|---|---|---|---|---|---|
+| Temel SigCNN3D | 0,07M | 0,584 | 0,654 | 0,630 | 0,538 |
+| P01 VoxCNN | 0,38M | 0,620 | 0,758 | 0,778 | 0,462 |
+| P02 MedicalNet (ön eğitimli) | 32,99M | **0,700** | 0,758 | 0,593 | 0,808 |
+| P06 CNN+LRP | 4,27M | 0,500 | 0,603 | — | — |
+
+P01 ve P02'nin AUC'si **aynı**; fark kalibrasyonda (P02'nin sens/spec dengeli). Transfer
+öğrenmenin bu koşuda kazandırdığı şey sıralama kalitesi değil, karar eşiğinin yerine oturması.
+
+### 6.5 P06 öğrenmiyor — yapısal neden bulundu
+Kayıp 13 epoch boyunca 0,693'te (= ln 2) çakılı, karışıklık matrisi `[[26,0],[27,0]]`.
+
+P06, **parametre sayısı girdi boyutuna bağlı olan tek model**: global havuzlama yerine
+`flatten + Linear` kullanıyor → `linear_in = 64 × (girdi/16)³` (32³ → 512, **128³ → 32.768**),
+`fc1 = Linear(32.768, 128)` tek başına **4,19M parametre = modelin %98'i**. Evrişim kısmı
+yalnızca 0,08M. Diğer yedi model adaptif havuzlama kullandığı için boyuttan bağımsız.
+
+Dikkat: VoxCNN'in de hiç normalizasyon katmanı yok ve o öğrendi. Yani ayırt edici etken
+normalizasyon eksikliği değil; 236 denekle eğitilen 4,19M parametreli tek FC katmanı.
+
+**Sıradaki:** P06 için PROTOKOL madde 7'nin LR taraması (`--lrler 1e-3 3e-4 1e-4`). Tek LR'de
+bırakıp "bu model çalışmıyor" demek doğru olmaz. Tarama da başarısız olursa bulgu şu:
+*Böhle 2019 mimarisi yayınlandığı haliyle 128³ girdide eğitilemiyor* (makale daha küçük girdi
+kullanıyordu) — bu da raporlanabilir bir sonuç, Görkem'e iletilmeli.
+
+### 6.6 Ölçülen kısıt: afin normalizasyon hacmi siliyor
+Radiata verisi 12 DOF afinle MNI'ye normalize edilmiş. Ölçüldü: sınır kutusu her denekte
+**150×187×159 mm (±2)** ve maske hacmi gerçek ICV ile **ilişkisiz (r = −0,18)**. Yani global
+kafa/beyin boyutu bir öznitelik olarak **kaldırılmış**; model bölgesel şekil ve yoğunluğa
+dayanmak zorunda. Wen 2020 `t1-linear` hattının bilinen özelliği ama **raporda kısıt olarak
+yazılmalı**: toplam beyin hacmi kaybı AD'nin güçlü bir işareti ve kısmen normalize edilmiş.
+
+### 6.7 Ölçülen kısıt: BAcc eşiği kattan teste taşınmıyor
+VoxCNN'de doğrulamada seçilen eşik (0,4821) test sonucunu hiç değiştirmiyor, oysa test'te
+0,736 veren bir eşik **var**. Daha iyi eşik aramak çözmüyor — 236 eğitim / 53 test deneğiyle
+olasılık dağılımları kat başına kayıyor. Sonuç: **birincil metrik AUC** (eşikten bağımsız),
+BAcc protokolün sabit argmax kuralıyla ve bu kısıt yazılarak raporlanır, 5 kat bitince
+kat-ortalaması eşik kullanılır.
+
+### 6.8 Depo durumu
+- PR #1 (Ertuğrul: 10 inceleme + 4 model + diyagramlar) birleştirildi, CI iki platformda yeşil.
+- **Admin yetkisi kişisel depoda paylaşılamıyor** (GitHub API 422; yalnız organizasyon
+  depolarında var). Ama `main` korumasız ve ruleset yok → **write yetkisi doğrudan push'a
+  izin veriyor, PR açmak zorunlu değil.** README'ye yetki tablosu ve bu not eklendi.
+- `ahmtgrkem` daveti henüz kabul etmedi.
+- Yeni dosyalar: `karsilastirma/kos_oasis.py`, `karsilastirma/altgrup_analiz.py`.
+
+### 6.9 Sıradaki (öncelik sırasıyla)
+1. Kat 0'ın kalan modelleri (P02-sıfırdan, P12, P01-VoxResNet, P11, P07).
+2. P06 LR taraması.
+3. **5 kat × 1 tohum** (9 model, ~17 saat) → tablodaki `±` değerleri anlamlı hale gelir.
+   Tam protokol 5 kat × 3 tohum = 135 koşu ≈ 50 saat; tohum tekrarı öne çıkan modellere
+   ayrılabilir (PROTOKOL madde 5'ten sapma olursa raporda yazılmalı).
+4. `altgrup_analiz.py --hepsi` → `karsilastirma/ALTGRUP.md`.
+5. ADNI/OASIS onayı gelince: ham veriyi **kendi hattımızdan** geçirme kararı
+   (`veri/VERI-SETI.md §2g`, `SUREC.md §7`).
