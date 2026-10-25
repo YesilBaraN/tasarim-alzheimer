@@ -69,11 +69,19 @@ def main():
     for klasor in sorted(p.name for p in (KOK / "uygulama").iterdir() if (p / "model.py").exists()):
         if klasor.startswith(("baran_", "ortak")):
             continue
+        # model.py YOKSA bu döngüye hiç girmez. Varsa artık sessizce atlanmaz: eksik bir
+        # isteğe bağlı bağımlılık atlanır (herkeste her paket olmayabilir), ama yazılmış bir
+        # model.py sözleşmeye uymuyorsa bu GERÇEK HATADIR — yoksa CI yeşil kalıp herkese
+        # "her şey yolunda" der. (Ortak alan kuralı: rozet yeşilse gerçekten yeşil olmalı.)
         try:
             mod = importlib.import_module(f"uygulama.{klasor}.model")
+        except ImportError as e:
+            print(f"ATLA {klasor}: bağımlılık yok ({e}) — pip install eksik paket")
+            continue
+        try:
             ileri_geri(f"{klasor} (varsayılan varyant)", mod.olustur("varsayilan", 2, B), 2)
-        except Exception as e:  # eksik bağımlılık / henüz yazılmamış sözleşme testi durdurmasın
-            print(f"ATLA {klasor}: {type(e).__name__}: {e}")
+        except Exception as e:
+            ok(f"{klasor} model sözleşmesi", False, f"{type(e).__name__}: {e}")
 
     # --- Dataset + metrikler (sentetik npy)
     with tempfile.TemporaryDirectory() as td:

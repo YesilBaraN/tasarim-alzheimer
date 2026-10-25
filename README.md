@@ -90,6 +90,8 @@ ADNI/OASIS görüntüleri, `.npy`/`.pth`/`.onnx` dosyaları, klinik sütunlu bö
 
 **1. Rozet yeşil kalır.** Her push'ta GitHub Actions üç test takımını + ONNX dışa aktarmayı + çıkarım katmanını Windows ve Linux'ta koşar (`.github/workflows/testler.yml`). Rozet kırmızıya dönerse **önce onu düzelt**, üstüne yeni iş yığma — kırmızı CI'a alışan ekip CI'ı olmayan ekiptir. Koşuları depoda [Actions](https://github.com/YesilBaraN/tasarim-alzheimer/actions) sekmesinden görürsün.
 
+`uygulama/<adın>_*/model.py` dosyasını yazdığın anda CI onu kendiliğinden bulur ve `olustur(varyant, sinif_sayisi, girdi_boyut)` sözleşmesiyle 32³ rastgele hacimde ileri/geri geçirir. Sözleşmeye uymazsa rozet kırmızıya döner — eksik bir pip paketi yüzünden atlanırsa logda `ATLA` olarak yazar, sessizce geçmez.
+
 **2. Koşu kayıtları depoya girer, ağırlıklar girmez.** Her eğitim koşusunun JSON kaydını `karsilastirma/kosu_kayitlari/` altına commit et (`.pth` dosyaları `.gitignore`'da). Tablo kimsenin elle doldurmasına gerek kalmadan üretilir:
 ```powershell
 python karsilastirma	ablo_uret.py --set adni1 --gorev ikili
