@@ -93,3 +93,65 @@ python karsilastirma\tablo_uret.py --set adni1 --gorev ikili --yaz karsilastirma
 ## 7. Danışmana sorulacak (SUREC §7'ye ek)
 
 7. Üç sınıf görevini **5 kat × 1 tohum** koşmamız kabul edilir mi? Ücretsiz GPU bütçesi (Kaggle ~30 sa/hafta/hesap) tam protokolün (270 koşu, 270–540 GPU-saat) üçte birini bile karşılamıyor; birincil görevde 3 tohumu koruyup ikincil görevde tek tohuma inmeyi öneriyoruz, raporda açıkça belirtilerek. Alternatif: bölümün GPU sunucusu/kümesi kullanıma açık mı?
+
+---
+
+## 7. GERÇEKLEŞEN: OASIS AD vs NC koşusu (25.10.2026, RTX 3050 4 GB)
+
+Bu bölüm **ölçülmüş** sürelerdir, tahmin değil. Kendi makinenizde planlarken bunları ölçek alın.
+
+### 7.1 Komut sırası
+```powershell
+# 0) Veri (bir kez, ~1,6 GB indirme + 2 dk işleme)
+python veri\indir_radiata.py --hedef D:\veri --kohort OASIS-1 OASIS-2
+python onisleme\onisle.py --girdi D:\veri\radiata\ham --cikti D:\veri\radiata\islenmis ^
+    --toplu --kafatasi hazir --kayit yok --boyut 128
+python uygulama\ortak\bolme.py etiket-radiata --metadata D:\veri\radiata\radiata_metadata.csv ^
+    --veri D:\veri\radiata\islenmis --kohort OASIS-1 OASIS-2 --min_yas 60 --cikti veri\oasis_etiket.csv
+python uygulama\ortak\bolme.py bol --etiket veri\oasis_etiket.csv --set oasis --cikti veri\bolme
+python uygulama\ortak\bolme.py dogrula --set oasis --bolme veri\bolme
+
+# 1) Kat kat koş (kos_oasis.py batch boyutlarını ölçülmüş değerlerden alır)
+python karsilastirma\kos_oasis.py --veri D:\veri\radiata\islenmis --kat 0
+python karsilastirma\kos_oasis.py --veri D:\veri\radiata\islenmis --kat 1
+#  ... kat 2, 3, 4
+
+# 2) Analiz
+python karsilastirma\tablo_uret.py --set oasis --gorev ikili
+python karsilastirma\altgrup_analiz.py --hepsi --set oasis --veri D:\veri\radiata\islenmis ^
+    --cikti karsilastirma\ALTGRUP.md
+python karsilastirma\uyum_analiz.py --set oasis --veri D:\veri\radiata\islenmis ^
+    --cikti karsilastirma\UYUM.md
+```
+
+### 7.2 Ölçülen süreler (kat 0, RTX 3050 Laptop 4 GB)
+| Model | Batch | Epoch | Süre | VRAM |
+|---|---|---|---|---|
+| Temel SigCNN3D | 4 | 40 | 19,5 dk | 0,9 GB |
+| P01 VoxCNN | 4 | 60 | 31,6 dk | 0,8 GB |
+| P02 MedicalNet (ön eğitimli) | 4 | 22 | 11,0 dk | 1,4 GB |
+| P02 sıfırdan | 4 | 27 | 13,5 dk | 1,4 GB |
+| P06 CNN+LRP | 4 | 13 | 6,4 dk | 0,7 GB |
+| P12 DenseNet121 | 4 | — | 23,8 dk | 2,2 GB |
+| P01 VoxResNet | **2 × accum 2** | — | — | 1,8 GB |
+| P11 FCN-yama | **2 × accum 2** | — | — | 2,4 GB |
+| P07 ResAttNet | **2 × accum 2** | — | — | 3,1 GB |
+
+**Kat başına kaba toplam ~2–3 saat** → 5 kat × 1 tohum ≈ **12–15 saat**.
+PROTOKOL madde 5'in istediği 5 kat × 3 tohum ≈ **40–45 saat**; tohum tekrarı öne çıkan
+modellere ayrılabilir, ama bu bir **sapmadır ve raporda yazılmalıdır**.
+
+### 7.3 ⚠ Sessiz yavaşlama tuzağı — bunu bir kez yaşadık
+VoxResNet batch 4'te `vram_olc.py`'ye göre 3,59 GB istiyor ve araç **"OK"** diyor; kart 4,0 GB.
+Gerçek koşuda epoch süresi 32 saniyeden **7 dakikaya** çıktı. Neden: Windows WDDM, kalan belleği
+sistem RAM'ine taşıyor — program çökmüyor, **13 kat yavaşlıyor**. 60 epoch o hızda 7 saat demekti.
+
+**Kural: "sığdı" demek yetmiyor. Eşik kartın kapasitesi değil, kapasitenin ~%75'i.**
+4 GB kartta hedef **≤ 3,0 GB**. Aşan model `--batch 2 --accum 2` ile koşar; etkin batch
+4'te sabit kaldığı için karşılaştırma bozulmaz (PROTOKOL madde 7).
+
+`kos_oasis.py` ayrıca `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` koyuyor: dar VRAM'de
+parçalanma tek başına yüzlerce MB yiyor.
+
+**Nasıl fark edilir:** epoch süresi beklenenin 3 katından fazlaysa `nvidia-smi` ile bellek
+kullanımına bakın. Kartın %85'inin üzerindeyse batch'i yarıya indirip accum'u iki katına çıkarın.

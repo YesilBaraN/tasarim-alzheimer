@@ -22,10 +22,16 @@ Yarıda kesilirse aynı komut kaldığı yerden devam eder: `egit.py` her epoch 
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 import time
 from pathlib import Path
+
+# Dar VRAM'de parcalanma (fragmentation) tek basina yuzlerce MB yiyor: 3,13 GB isteyen bir model
+# 4,0 GB kartta parcalanma yuzunden tasabiliyor. expandable_segments ayirici bloklari buyutulebilir
+# yapiyor ve bu kaybi buyuk olcude kapatiyor. torch >= 2.1'de var; eski surumde yok sayilir.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 for _akis in (sys.stdout, sys.stderr):
     try:
@@ -37,16 +43,35 @@ KOK = Path(__file__).resolve().parents[1]
 
 # (kisa_ad, model_klasor, varyant, batch, accum, ek_argumanlar)
 # batch x accum = 4 her satirda: etkin batch sabit.
+#
+# Batch degerleri TAHMIN DEGIL, `vram_olc.py --boyutlar 128 --batchlar 2 4` ile olculdu.
+# Kart 4,0 GB; esik 4,0 degil **~3,0 GB** olarak alindi, cunku "sigdi" demek yetmiyor:
+# VoxResNet batch 4'te 3,59 GB istiyor ve "OK" raporluyor, ama gercek kosuda nvidia-smi
+# 3,62 GB (kartin %90'i) gosterdi ve epoch suresi 32 saniyeden **7 dakikaya** cikti —
+# Windows WDDM kalan bellegi sistem RAM'ine tasidigi icin program cokmuyor, 13 kat
+# yavasliyor. Bu sessiz yavaslama bir kez bize 7 saatlik bir kosuya mal oldu.
+#
+#   model                b2       b4      secilen
+#   ortak:sigcnn        0,29     0,56     b4
+#   P01 voxcnn          0,34     0,65     b4
+#   P01 resnet (VoxResNet) 1,82  3,59     b2 x accum2   <- b4 cok riskli
+#   P02 resnet18        0,55     0,82     b4
+#   P06 cnn             0,51     0,72     b4
+#   P07 resatt18        3,13     5,74     b2 x accum2   <- b2 bile sinirda, en son kosuyor
+#   P11 fcn             2,36     4,43     b2 x accum2
+#   P12 densenet121     1,28     2,22     b4
+#
+# Sira ucuzdan pahaliya: bir sey patlarsa once sonuc alinmis olur, en riskli en sonda kalir.
 KOSULAR = [
     ("temel",       "ortak",                 "sigcnn",      4, 1, []),
     ("P01-voxcnn",  "baran_P01_korolev",     "voxcnn",      4, 1, []),
-    ("P01-voxresnet", "baran_P01_korolev",   "resnet",      4, 1, []),
     ("P02-monai",   "baran_P02_medicalnet",  "resnet18",    4, 1, ["--agirlik", "monai", "--isinma", "5"]),
-    ("P02-sifirdan", "baran_P02_medicalnet", "resnet18",    4, 1, ["--etiket", "sifirdan-ablation"]),
     ("P06",         "gorkem_P06_bohle",      "cnn",         4, 1, []),
-    ("P07",         "gorkem_P07_resattnet",  "resatt18",    2, 2, []),   # 5,49 GB @ b4 -> b2
-    ("P11",         "ertugrul_P11_qiu_fcn",  "fcn",         2, 2, []),   # 4,18 GB @ b4 -> b2
+    ("P02-sifirdan", "baran_P02_medicalnet", "resnet18",    4, 1, ["--etiket", "sifirdan-ablation"]),
     ("P12",         "ertugrul_P12_densenet", "densenet121", 4, 1, []),
+    ("P01-voxresnet", "baran_P01_korolev",   "resnet",      2, 2, []),
+    ("P11",         "ertugrul_P11_qiu_fcn",  "fcn",         2, 2, []),
+    ("P07",         "gorkem_P07_resattnet",  "resatt18",    2, 2, []),
 ]
 
 

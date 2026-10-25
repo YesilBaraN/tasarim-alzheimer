@@ -49,10 +49,34 @@ Bu ikisi için `--batch 2 --accum 2` kullanın: etkin batch aynı kalır, bellek
 | VoxCNN (P01) eğitimi | ✅ 128³ batch 4 (0,65 GB) | **valid konvolüsyon ≥100³ ister** — 96³'te padding=1'e düşer (makaleden sapma, uyarı basar). **batch 1 çalışmaz** |
 | VoxResNet (P01) eğitimi | ✅ 128³ batch 4 (3,59 GB) | en ağır model; sıkışırsa `--batch 2 --accum 2` |
 | ResNet-18 MedicalNet (P02) | ✅ 128³ batch 4 (1,58 GB) | eski "sığmaz" notu **yanlıştı**, ölçüldü |
-| P12 DenseNet121 (Ertuğrul) | ✅ 128³ batch 4 (1,96 GB) | ölçüldü · 11,22M parametre |
-| P11 FCN-yama (Ertuğrul) | ⚠ 128³ batch **2** (2,11 GB) | batch 4'te 4,18 GB → 4 GB'ı aşıyor, paylaşılan belleğe taşar ve yavaşlar · 1,52M parametre |
-| P07 ResAttNet (Görkem) | ⚠ 128³ batch **2** (2,87 GB) | batch 4'te **5,49 GB** → kartın çok üstünde · 34,21M parametre, en ağır model |
-| P06 CNN+LRP (Görkem) | ✅ 128³ batch 4 (0,47 GB) | ölçüldü · 0,14M parametre |
+| P12 DenseNet121 (Ertuğrul) | ✅ 128³ batch 4 (2,22 GB) | 11,24M parametre · 121 normalizasyon katmanı |
+| P11 FCN-yama (Ertuğrul) | ⚠ 128³ batch **2** (2,36 GB) | batch 4'te 4,43 GB → aşıyor · 1,52M parametre |
+| P07 ResAttNet (Görkem) | ⚠ 128³ batch **2** (3,13 GB) | batch 4'te **5,74 GB** · 34,21M parametre, en ağır model; b2 bile sınırda |
+| P06 CNN+LRP (Görkem) | ✅ 128³ batch 4 (0,72 GB) | **4,27M parametre** (aşağıdaki uyarıya bakın) |
+
+⚠ **Önceki sürümde P06 için "0,14M parametre" yazıyordu; bu yanlıştı.** O değer yalnızca 32³
+girdide geçerli. P06, parametre sayısı **girdi boyutuna bağlı olan tek model**: global havuzlama
+yerine `flatten + Linear` kullanıyor, dolayısıyla
+
+    linear_in = 64 × (girdi/16)³   →   32³ için 512,  128³ için **32.768**
+
+ve `fc1 = Linear(32.768, 128)` tek başına **4,19M parametre**, yani modelin **%98'i**. Evrişim
+özniteliği çıkaran kısım yalnızca 0,08M. Diğer yedi model boyuttan bağımsız (adaptif havuzlama
+kullanıyorlar), bu yüzden onların sayıları 32³ ve 128³'te aynı.
+
+Doğru değerler (128³'te ölçüldü — hepsini `vram_olc.py` ve parametre sayımıyla doğrulayın,
+tahmin yürütmeyin):
+
+| Model | Parametre (128³) | Normalizasyon katmanı | En büyük tek katman |
+|---|---|---|---|
+| Temel SigCNN3D | 0,07M | 4 | — |
+| P01 VoxCNN | 0,38M | **0** | %29 |
+| P01 VoxResNet | 3,21M | 15 | %14 |
+| P02 ResNet-18 | 32,99M | 17 | %21 |
+| **P06 CNN+LRP** | **4,27M** | **0** | **fc1 %98** |
+| P07 ResAttNet | 34,21M | 22 | %21 |
+| P11 FCN-yama | 1,52M | 4 | %68 |
+| P12 DenseNet121 | 11,24M | 121 | %5 |
 | **Baran'ın 4 modeli, 128³** | ✅ yerelde koşabilir | Kaggle gerekmiyor; süre hesabı `karsilastirma/KOSU-PLANI.md` |
 
 Kural (şimdilik değişmedi): **tabloya giren** sonuçlar herkeste aynı boyutla (128³) ve aynı donanım
