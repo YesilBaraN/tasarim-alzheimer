@@ -2,9 +2,22 @@
 
 ## A) Yeni sohbete yapıştırılacak prompt
 
-**Önce:** depoyu klonla ve ortamı kur — `README.md` → "Takım: GitHub'dan nasıl devam edilir". Depo: https://github.com/YesilBaraN/tasarim-alzheimer
-Claude Code kullanıyorsan klasörü ona açtır; claude.ai sohbetindeysen klasörü zip'leyip sohbete yükle (dosya sistemi olmadığı için çıktıları indirip sen commit'leyeceksin).
+### Önce bunu yap (bir kez, ~15 dk) — prompt'u yapıştırmak TEK BAŞINA yetmez
+```powershell
+git clone https://github.com/YesilBaraN/tasarim-alzheimer.git
+cd tasarim-alzheimer
+```
+Sonra `README.md` → **"Takım: GitHub'dan nasıl devam edilir"** bölümündeki kurulum adımlarını uygula
+(Python 3.12 venv + paketler) ve üç testi yeşile al. Ancak ondan sonra:
 
+- **Claude Code kullanıyorsan:** `tasarim-alzheimer` klasörünü Claude'a açtır, sonra aşağıdaki bloğu yapıştır.
+- **claude.ai sohbetindeysen:** klasörü zip'leyip sohbete yükle, sonra bloğu yapıştır. O sohbette dosya
+  sistemi yok; Claude'un ürettiği dosyaları indirip sen commit'leyeceksin.
+
+Aşağıdaki **tüm bloğu** (satır başındaki `>` işaretleri olmadan) kopyala:
+
+> **Depo:** https://github.com/YesilBaraN/tasarim-alzheimer — bu klasörün sana açık olduğunu varsayıyorum. Açık değilse ya da dosyaları göremiyorsan önce bunu söyle; klonlama ve ortam kurulumunu `README.md`'deki "Takım" bölümüne göre birlikte yapalım, sonra devam ederiz.
+>
 > Ben Ahmet Görkem Yavuz (G231210032), Sakarya Üniversitesi Bilgisayar Mühendisliği, BSM 401 Bilgisayar Mühendisliği Tasarımı dersi, 2026-2027 Güz. Ekip: Ertuğrul Kabaoğlu, Baran Yeşilyurt ve ben; danışman Dr. Öğr. Üyesi Can Yüzkollar. Konu: **"Alzheimer Hastalığının Erken Teşhisi İçin 3B Derin Öğrenme Tabanlı Karar Destek Sistemi Geliştirilmesi"** (ADNI T1 sMRI, NC/MCI/AD, 3D-ResNet başta 3B CNN'ler, ≥%85 hedefi, ONNX/API prototip).
 >
 > Danışmanın şartı: 3 kişi × 5 makale = 15 makale incelenir; her kişi 2'sini implemente eder; 6 uygulama **ortak bir veri setinde** (ADNI1 1.5T başlangıç taramaları; onay gelene dek OASIS-1) **ortak bir protokolle** karşılaştırılır. Makaleleri yapay zekâyla yorumlatarak anlamak kabul.
