@@ -6,6 +6,7 @@ Turk akademik bicimi: A4, Times New Roman 12 pt, sol kenar 3 cm, digerleri 2,5 c
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -14,12 +15,17 @@ from PIL import Image
 from docx import Document
 from docx.enum.section import WD_SECTION
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK, WD_TAB_ALIGNMENT, WD_TAB_LEADER
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
 GIRDI, CIKTI = sys.argv[1], sys.argv[2]
+# 3. argüman (isteğe bağlı): başlık sayfa numaraları JSON'u — Word'den ölçülür, içindekilere yazılır
+SAYFALAR = None
+if len(sys.argv) > 3:
+    with open(sys.argv[3], encoding="utf-8-sig") as _f:
+        SAYFALAR = json.load(_f)
 GIRDI_KLASOR = Path(GIRDI).resolve().parent     # görsel yolları buna göre çözülür
 SATIRLAR = open(GIRDI, encoding="utf-8").read().replace("\r\n", "\n").split("\n")
 
@@ -169,6 +175,77 @@ def tablo_yap(blok: list[str]):
     for satir in govde:
         doldur(t.add_row(), satir, False)
     return t
+
+
+# ----------------------------------------------------------------- içindekiler
+def baslik_listesi():
+    """Belgede çıkacak ## ve ### başlıkları sırayla (kapak ve kod blokları hariç)."""
+    liste, kod, kapakta = [], False, False
+    for ham in SATIRLAR:
+        k = ham.strip()
+        if k == "<!-- kapak -->":
+            kapakta = True; continue
+        if k == "<!-- /kapak -->":
+            kapakta = False; continue
+        if kapakta:
+            continue
+        if k.startswith("```"):
+            kod = not kod; continue
+        if kod:
+            continue
+        if k.startswith("## "):
+            liste.append((1, sade_baslik(k[3:])))
+        elif k.startswith("### "):
+            liste.append((2, sade_baslik(k[4:])))
+    return liste
+
+
+def _fld_run(p, tur=None, metin=None):
+    r = p.add_run()
+    if tur:
+        f = OxmlElement("w:fldChar"); f.set(qn("w:fldCharType"), tur); r._r.append(f)
+    if metin is not None:
+        it = OxmlElement("w:instrText"); it.set(qn("xml:space"), "preserve"); it.text = metin; r._r.append(it)
+
+
+def icindekiler_yaz():
+    """Dolu içindekiler: her başlık + noktalı kılavuz + sayfa numarası.
+
+    Alan (TOC) yapısı korunuyor: Word'de alana sağ tık → Alanı güncelleştir ya da F9 ile
+    kendi biçimiyle yeniden üretilebilir. Ama açılışta BOŞ görünmesin diye sonuç metni biz
+    yazıyoruz. Sayfa numaraları 3. argümandaki JSON'dan gelir (Word'ün gerçek sayfalaması).
+
+    "İÇİNDEKİLER" başlığı Heading stilinde DEĞİL: Heading olsaydı Word, alanı güncellediğinde
+    onu da listeye alırdı.
+    """
+    b = doc.add_paragraph()
+    b.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    b.paragraph_format.space_after = Pt(16)
+    r = b.add_run("İÇİNDEKİLER"); r.bold = True; r.font.size = Pt(15)
+
+    liste = baslik_listesi()
+    sayfa = None
+    if SAYFALAR is not None:
+        if len(SAYFALAR) == len(liste) and all(x["metin"] == m for x, (_, m) in zip(SAYFALAR, liste)):
+            sayfa = [x["sayfa"] for x in SAYFALAR]
+        else:
+            print(f"UYARI sayfa listesi basliklarla uyusmuyor ({len(SAYFALAR)} / {len(liste)}), numarasiz yaziliyor")
+    for n, (sev, metin) in enumerate(liste):
+        p = doc.add_paragraph()
+        pf = p.paragraph_format
+        pf.left_indent = Cm(0.0 if sev == 1 else 0.9)
+        pf.space_before = Pt(6 if sev == 1 else 0)
+        pf.space_after = Pt(1)
+        pf.line_spacing = 1.1
+        pf.tab_stops.add_tab_stop(Cm(ICERIK_CM), WD_TAB_ALIGNMENT.RIGHT, WD_TAB_LEADER.DOTS)
+        if n == 0:                                   # alanı ilk satırda aç
+            _fld_run(p, "begin")
+            _fld_run(p, metin=r' TOC \o "1-2" \h \z \u ')
+            _fld_run(p, "separate")
+        a = p.add_run(metin); a.font.size = Pt(12 if sev == 1 else 11); a.bold = (sev == 1)
+        t = p.add_run("\t" + (str(sayfa[n]) if sayfa else "")); t.font.size = Pt(12 if sev == 1 else 11)
+        if n == len(liste) - 1:                      # son satırda kapat
+            _fld_run(p, "end")
 
 
 # ----------------------------------------------------------------- kapak
@@ -335,10 +412,7 @@ while i < len(SATIRLAR):
         if not kapak_bitti and re.match(r"^1\.", metin):
             if not KAPAK_VAR:
                 doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
-            ic = doc.add_paragraph(style="Heading 1")
-            ic.add_run("İÇİNDEKİLER")
-            pi = doc.add_paragraph()
-            alan(pi, r'TOC \o "1-2" \h \z \u')
+            icindekiler_yaz()
             doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
             kapak_bitti = True
         p = doc.add_paragraph(style="Heading 1")
