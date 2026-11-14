@@ -11,8 +11,6 @@ Ahmet Görkem Yavuz (G231210032) · Ertuğrul Kabaoğlu (G231210376) · Baran Ye
 
 **Ders:** BSM 401 Bilgisayar Mühendisliği Tasarımı — 2026-2027 Güz
 
-**Teslim tarihi:** ........ 2026
-
 **Proje deposu:** https://github.com/YesilBaraN/tasarim-alzheimer
 
 ---
