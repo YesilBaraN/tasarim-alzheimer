@@ -1,3 +1,5 @@
+![Sakarya Üniversitesi|12](sekiller/sau_logo.png)
+
 # 1. ARA RAPOR — PROJE ÖNERİSİ VE PLANLAMA
 
 ## KAPAK

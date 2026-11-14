@@ -1,3 +1,5 @@
+![Sakarya Üniversitesi|12](sekiller/sau_logo.png)
+
 # 2. ARA RAPOR — ANALİZ VE TASARIM
 
 ## KAPAK
