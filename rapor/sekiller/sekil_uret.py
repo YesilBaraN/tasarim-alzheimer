@@ -123,7 +123,7 @@ def kaydet(fig, ad):
 
 # ---------------------------------------------------------------- Şekil 1: mimari
 def sekil_mimari():
-    fig, ax = eksen(8.6, "Şekil 1. Sistem mimarisi — altı katmanlı blok diyagramı (§4.1)")
+    fig, ax = eksen(8.6, "Şekil 2. Sistem mimarisi — altı katmanlı blok diyagramı (§4.1)")
     KAT = [
         ("1. VERİ KATMANI", R["veri"], [
             "Ham sMRI verisi\n(ADNI1 1.5T · OASIS)\nNIfTI, DUA korumalı",
@@ -175,7 +175,7 @@ def sekil_mimari():
 
 # ---------------------------------------------------------------- Şekil 2: use-case
 def sekil_usecase():
-    fig, ax = eksen(6.4, "Şekil 2. Kullanım senaryosu (use-case) diyagramı (§3.3)")
+    fig, ax = eksen(6.4, "Şekil 1. Kullanım senaryosu (use-case) diyagramı (§3.3)")
     AKTOR = [("Radyolog /\nKlinisyen\n(birincil)", 0.86, R["aktor"]),
              ("Araştırmacı /\nGeliştirici", 0.50, R["aktor2"]),
              ("Sistem\nYöneticisi", 0.17, R["aktor3"])]

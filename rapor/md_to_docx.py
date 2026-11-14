@@ -144,17 +144,37 @@ def tablo_yap(blok: list[str]):
     t.alignment = WD_TABLE_ALIGNMENT.CENTER
     t.autofit = False
 
-    # Ilk sutun isim tasiyor, digerleri sayi: ilk sutuna daha fazla yer.
-    # Genis tabloda ilk sutunun payi dusuyor ve yazi kuculuyor: 9 sutunlu sonuc
-    # tablosunda 1,4 cm'lik sutunlara 9,5 pt sigmiyor, basliklar ucer satira bolunuyor.
-    if n <= 2:
-        gen = [ICERIK_CM / n] * n
-        punto = Pt(9.5)
-    else:
-        pay = 0.20 if n >= 8 else (0.26 if n >= 6 else 0.34)
-        ilk = ICERIK_CM * pay
-        gen = [ilk] + [(ICERIK_CM - ilk) / (n - 1)] * (n - 1)
-        punto = Pt(8.0) if n >= 8 else Pt(9.5)
+    # Sütun genişliği İÇERİKTEN hesaplanır. Önceden ilk sütun sabit pay alıyordu; bu yüzden
+    # "No" gibi 5 karakterlik bir sütun sayfanın üçte birini, asıl metin sütunu ise geri kalanı
+    # sıkışık alıyordu (gereksinim tablolarında görüldü). Şimdi: her sütunun en uzun hücresi
+    # (60 karakterle sınırlı) ≈ 0,19 cm/karakter + dolgu kadar yer ister, sonra toplam
+    # kullanılabilir genişliğe oranlanır; çok dar sütunlara 0,9 cm taban konur.
+    punto = Pt(8.0) if n >= 8 else Pt(9.5)
+    sade = lambda v: re.sub(r"[*`]", "", v)
+    uz = []
+    for c in range(n):
+        hucre_metinleri = [basliklar[c]] + [r[c] if c < len(r) else "" for r in govde]
+        uz.append(max(len(sade(v)) for v in hucre_metinleri))
+    # Kısa sütunlar (en uzun hücre ≤ 14 karakter: "NFR-1", "UC-1", "İsteğe bağlı", "H10")
+    # DOĞAL genişliğinde SABİTLENİR; yalnız uzun metin sütunları kalan yeri paylaşır. Önce hepsi
+    # orantılı küçültülüyordu ve "NFR-1" alt satıra kırılıyordu ("NFR-" / "1").
+    KISA = 14
+    kisa = [i for i in range(n) if uz[i] <= KISA]
+    uzun = [i for i in range(n) if uz[i] > KISA]
+    gen = [0.0] * n
+    for i in kisa:
+        gen[i] = max(0.9, uz[i] * 0.21 + 0.45)
+    kalan = ICERIK_CM - sum(gen[i] for i in kisa)
+    if uzun and kalan >= 2.0 * len(uzun):
+        agirlik = [min(uz[i], 60) for i in uzun]
+        for i, a in zip(uzun, agirlik):
+            gen[i] = kalan * a / sum(agirlik)
+    else:                                                # sığmıyorsa hepsi orantılı (geri dönüş)
+        ham = [max(0.9, min(u, 60) * 0.19 + 0.4) for u in uz]
+        gen = [ICERIK_CM * x / sum(ham) for x in ham]
+    # Kısa değerli sütun (≤14 karakter) ortalı, metin sütunu sola yaslı: uzun cümleyi
+    # ortalamak okunmuyor.
+    hiza = [WD_ALIGN_PARAGRAPH.CENTER if u <= 14 else WD_ALIGN_PARAGRAPH.LEFT for u in uz]
 
     def doldur(satir_h, degerler, basliksa):
         for i, h in enumerate(satir_h.cells):
@@ -163,7 +183,7 @@ def tablo_yap(blok: list[str]):
             p.paragraph_format.space_after = Pt(0)
             p.paragraph_format.space_before = Pt(0)
             p.paragraph_format.line_spacing = 1.0
-            p.alignment = WD_ALIGN_PARAGRAPH.LEFT if i == 0 else WD_ALIGN_PARAGRAPH.CENTER
+            p.alignment = hiza[i]
             v = degerler[i] if i < len(degerler) else ""
             if basliksa:
                 r = p.add_run(v.replace("**", "").replace("`", "")); r.bold = True; r.font.size = punto
@@ -174,7 +194,41 @@ def tablo_yap(blok: list[str]):
     doldur(t.rows[0], basliklar, True)
     for satir in govde:
         doldur(t.add_row(), satir, False)
+    for sira, r in enumerate(t.rows):
+        trPr = r._tr.get_or_add_trPr()
+        bolme = OxmlElement("w:cantSplit")               # satır iki sayfaya bölünmesin
+        trPr.append(bolme)
+        if sira == 0:
+            bas = OxmlElement("w:tblHeader")             # tablo sayfa değiştirirse başlık tekrarlansın
+            trPr.append(bas)
+    # Tablo mümkünse tek sayfada kalsın: son satır hariç her satırı sonrakine bağla.
+    # (Tek sayfadan uzun tabloda Word bunu yok sayıp normal bölüyor.)
+    for r in t.rows[:-1]:
+        for c in r.cells:
+            for pr in c.paragraphs:
+                pr.paragraph_format.keep_with_next = True
     return t
+
+
+# ----------------------------------------------------------------- numaralı liste
+def yeni_sayili_liste() -> int:
+    """'List Number' stilinin tüm listeleri aynı numaralandırmayı paylaşır: ikinci liste
+    1'den değil, öncekinin devamından (5., 6., 12.) başlıyordu. Her liste için aynı soyut
+    tanıma bağlı, başlangıcı 1'e zorlanmış YENİ bir num kaydı üretiyoruz."""
+    nb = doc.part.numbering_part.numbering_definitions._numbering
+    stil = doc.styles["List Number"].element
+    stil_num = stil.xpath("./w:pPr/w:numPr/w:numId/@w:val")[0]
+    soyut = None
+    for n in nb.findall(qn("w:num")):
+        if n.get(qn("w:numId")) == str(stil_num):
+            soyut = n.find(qn("w:abstractNumId")).get(qn("w:val"))
+    yeni_id = max(int(n.get(qn("w:numId"))) for n in nb.findall(qn("w:num"))) + 1
+    num = OxmlElement("w:num"); num.set(qn("w:numId"), str(yeni_id))
+    a = OxmlElement("w:abstractNumId"); a.set(qn("w:val"), soyut); num.append(a)
+    lo = OxmlElement("w:lvlOverride"); lo.set(qn("w:ilvl"), "0")
+    so = OxmlElement("w:startOverride"); so.set(qn("w:val"), "1"); lo.append(so); num.append(lo)
+    nb.append(num)
+    return yeni_id
 
 
 # ----------------------------------------------------------------- içindekiler
@@ -392,6 +446,8 @@ while i < len(SATIRLAR):
         blok = []
         while i < len(SATIRLAR) and SATIRLAR[i].strip().startswith("|"):
             blok.append(SATIRLAR[i]); i += 1
+        if doc.paragraphs:                      # tabloyu tanıtan paragraf tablodan ayrı sayfaya düşmesin
+            doc.paragraphs[-1].paragraph_format.keep_with_next = True
         tablo_yap(blok)
         bos = doc.add_paragraph()
         bos.paragraph_format.space_after = Pt(8)
@@ -474,8 +530,12 @@ while i < len(SATIRLAR):
                 ogeler[-1] += " " + t; i += 1
             else:
                 break
+        liste_no = yeni_sayili_liste()
         for o in ogeler:
             p = doc.add_paragraph(style="List Number")
+            pn = p._p.get_or_add_pPr().get_or_add_numPr()
+            pn.get_or_add_ilvl().val = 0
+            pn.get_or_add_numId().val = liste_no
             p.paragraph_format.space_before = Pt(2)
             p.paragraph_format.space_after = Pt(2)
             yaz_bicimli(p, o)
