@@ -222,6 +222,11 @@ while i < len(SATIRLAR):
         # Genişlik sayfa genişliğine oturur; ama uzun şekiller sayfa yüksekliğini aşıyor,
         # o yüzden yükseklik sınırını da kontrol edip gerekirse genişliği küçültüyoruz.
         g_cm = ICERIK_CM
+        # Boyut ayarı: ![açıklama|4](yol.png) → görsel 4 cm genişliğinde. Kapaktaki logo gibi
+        # küçük görseller sayfa genişliğine gerilmesin diye.
+        m_boy = re.search(r"\|(\d+(?:[.,]\d+)?)$", m_img.group(1))
+        if m_boy:
+            g_cm = min(float(m_boy.group(1).replace(",", ".")), ICERIK_CM)
         y_cm = y_px / g_px * g_cm
         if y_cm > AZAMI_SEKIL_CM:
             g_cm *= AZAMI_SEKIL_CM / y_cm
