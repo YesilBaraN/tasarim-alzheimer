@@ -1,21 +1,29 @@
+<!-- kapak -->
 ![Sakarya Üniversitesi|12](sekiller/sau_logo.png)
 
-# 1. ARA RAPOR — PROJE ÖNERİSİ VE PLANLAMA
+Bilgisayar ve Bilişim Bilimleri Fakültesi
+Bilgisayar Mühendisliği Bölümü
 
-## KAPAK
+BSM 401 Bilgisayar Mühendisliği Tasarımı
+2026-2027 Güz Dönemi
 
-**Proje adı:** Alzheimer Hastalığının Erken Teşhisi İçin 3B Derin Öğrenme Tabanlı Karar Destek Sistemi Geliştirilmesi
+# 1. ARA RAPOR
+## Proje Önerisi ve Planlama
 
-**Öğrenciler:**
-Ahmet Görkem Yavuz (G231210032) · Ertuğrul Kabaoğlu (G231210376) · Baran Yeşilyurt (G231210078)
+**Alzheimer Hastalığının Erken Teşhisi İçin 3B Derin Öğrenme Tabanlı Karar Destek Sistemi Geliştirilmesi**
 
-**Danışman:** Dr. Öğr. Üyesi Can Yüzkollar
+**Hazırlayanlar**
+Ahmet Görkem Yavuz — G231210032
+Ertuğrul Kabaoğlu — G231210376
+Baran Yeşilyurt — G231210078
 
-**Ders:** BSM 401 Bilgisayar Mühendisliği Tasarımı — 2026-2027 Güz
+**Danışman**
+Dr. Öğr. Üyesi Can Yüzkollar
 
-**Proje deposu:** https://github.com/YesilBaraN/tasarim-alzheimer
+Sakarya, 2026
 
----
+github.com/YesilBaraN/tasarim-alzheimer
+<!-- /kapak -->
 
 ## 1. PROJE TANIMI
 

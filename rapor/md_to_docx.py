@@ -171,6 +171,64 @@ def tablo_yap(blok: list[str]):
     return t
 
 
+# ----------------------------------------------------------------- kapak
+KAPAK_VAR = False
+
+
+def dikey_ortala(bolum):
+    """Bölümü sayfada dikey ortalar (w:vAlign=center). Kapak sayfası için."""
+    sp = bolum._sectPr
+    for e in sp.findall(qn("w:vAlign")):
+        sp.remove(e)
+    va = OxmlElement("w:vAlign")
+    va.set(qn("w:val"), "center")
+    ng = sp.find(qn("w:docGrid"))       # şema sırası: vAlign, docGrid'den ÖNCE gelmeli
+    if ng is not None:
+        ng.addprevious(va)
+    else:
+        sp.append(va)
+
+
+def kapak_yaz(satirlar):
+    """<!-- kapak --> ... <!-- /kapak --> arasını ortalı kapak sayfası olarak yazar.
+
+    Kapak kendi bölümünde durur: böylece sayfada dikey ortalanır ve alt bilgisinde sayfa
+    numarası çıkmaz. Kurallar: görsel satırı ortalı gömülür; '# ' büyük başlık, '## ' alt
+    başlık (ikisi de içindekilere GİRMEZ, düz paragraf); boş satır boşluk; diğer her satır
+    kendi paragrafı (satırlar birleştirilmez, isimler alt alta kalsın diye).
+    """
+    for ham in satirlar:
+        k = ham.strip()
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(2)
+        p.paragraph_format.line_spacing = 1.15
+        if k == "":
+            p.paragraph_format.space_after = Pt(10)
+            continue
+        m = re.fullmatch(r"!\[([^\]]*)\]\(([^)]+)\)", k)
+        if m:
+            yol = (GIRDI_KLASOR / m.group(2)).resolve()
+            mb = re.search(r"\|(\d+(?:[.,]\d+)?)$", m.group(1))
+            gen = min(float(mb.group(1).replace(",", ".")), ICERIK_CM) if mb else ICERIK_CM
+            if yol.exists():
+                p.add_run().add_picture(str(yol), width=Cm(gen))
+            else:
+                print(f"UYARI kapak gorseli bulunamadi: {yol}")
+            p.paragraph_format.space_after = Pt(14)
+            continue
+        if k.startswith("## "):
+            yaz_bicimli(p, k[3:], boyut=Pt(15))
+            for r in p.runs: r.bold = True
+        elif k.startswith("# "):
+            yaz_bicimli(p, k[2:], boyut=Pt(22))
+            for r in p.runs: r.bold = True
+            p.paragraph_format.space_after = Pt(4)
+        else:
+            yaz_bicimli(p, k, boyut=Pt(12.5))
+
+
 # ----------------------------------------------------------------- cozumleme
 i = 0
 kapak_bitti = False
@@ -178,6 +236,19 @@ kapak_bitti = False
 while i < len(SATIRLAR):
     ham = SATIRLAR[i]
     k = ham.strip()
+
+    # kapak bloğu: ortalı, dikey ortalı, ayrı bölüm
+    if k == "<!-- kapak -->":
+        i += 1
+        blok = []
+        while i < len(SATIRLAR) and SATIRLAR[i].strip() != "<!-- /kapak -->":
+            blok.append(SATIRLAR[i]); i += 1
+        i += 1
+        kapak_yaz(blok)
+        doc.add_section(WD_SECTION.NEW_PAGE)      # kapaktan sonra yeni sayfa + yeni bölüm
+        dikey_ortala(doc.sections[0])             # yalnız ilk bölüm (kapak) ortalanır
+        KAPAK_VAR = True
+        continue
 
     if k == "":
         i += 1
@@ -262,7 +333,8 @@ while i < len(SATIRLAR):
     if k.startswith("## "):
         metin = k[3:]
         if not kapak_bitti and re.match(r"^1\.", metin):
-            doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
+            if not KAPAK_VAR:
+                doc.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
             ic = doc.add_paragraph(style="Heading 1")
             ic.add_run("İÇİNDEKİLER")
             pi = doc.add_paragraph()
@@ -352,7 +424,10 @@ while i < len(SATIRLAR):
     yaz_bicimli(p, " ".join(kaba))
 
 # ----------------------------------------------------------------- alt bilgi: sayfa no
-alt = doc.sections[0].footer.paragraphs[0]
+son_bolum = doc.sections[-1]
+if KAPAK_VAR:
+    son_bolum.footer.is_linked_to_previous = False   # kapakta numara görünmesin
+alt = son_bolum.footer.paragraphs[0]
 alt.alignment = WD_ALIGN_PARAGRAPH.CENTER
 alan(alt, "PAGE")
 for r in alt.runs:
