@@ -18,7 +18,7 @@ Son güncelleme: 25.10.2026 (Baran, Claude Code oturumu). Bu dosya ekibin tek "s
 | Aşama | Ad | İçermesi gerekenler | Bizim durumumuz |
 |---|---|---|---|
 | 1 | **Proje Önerisi ve Planlama** | kapak · proje tanımı (amaç, kapsam, önem) · literatür özeti (5–10 kaynak) · teknik altyapı · zaman çizelgesi (Gantt) · beklenen sonuçlar | ✅ Konu formu teslim edildi (24.10.2026) |
-| 2 | **Analiz ve Tasarım** ← **BURADAYIZ** | kapak · giriş (1. rapordan bu yana özet) · **detaylı literatür (10–15 kaynak)** · **gereksinim analizi** (işlevsel, işlevsel olmayan, use-case) · **tasarım** (sistem mimarisi blok diyagramı, veritabanı ER, arayüz mock-up, akış diyagramları) · güncellenmiş zaman çizelgesi | 🔄 Taslak: `rapor/ARA-RAPOR-2-TASLAK.md` |
+| 2 | **Analiz ve Tasarım** ← **BURADAYIZ** | kapak · giriş (1. rapordan bu yana özet) · **detaylı literatür (10–15 kaynak)** · **gereksinim analizi** (işlevsel, işlevsel olmayan, use-case) · **tasarım** (sistem mimarisi blok diyagramı, veritabanı ER, arayüz mock-up, akış diyagramları) · güncellenmiş zaman çizelgesi | 🔄 Taslak: `rapor/ARA-RAPOR-2.md` |
 | 3 | **Uygulama ve Geliştirme** | giriş · geliştirme ortamı · kod yapısı · algoritma/pseudocode · ekran görüntüleri · ön test sonuçları · problemler/çözümler · mühendislik standartları · değişiklik yönetimi · güncel plan | ⏳ 6 implementasyon + ortak protokol |
 | 4 | **Sonuçlandırma ve Değerlendirme** | nihai mimari · yazılım yapısı · kapsamlı test/değerlendirme · sonuç/öneriler · kaynakça (APA/IEEE) · ekler | ⏳ Karşılaştırma tablosu + ONNX prototip |
 
@@ -100,7 +100,7 @@ Rapor bölümleri: Giriş (Baran) · Literatür (herkes, kendi 5'i) · Gereksini
 | 8b | Git deposu + GitHub + CI | Baran | ✅ bitti | 25.10 | https://github.com/YesilBaraN/tasarim-alzheimer (public) · her push'ta Windows+Linux uçtan uca test, iki koşu da yeşil · koşu kayıtlarına commit hash'i düşüyor |
 | 9 | Ön işleme hattı (OASIS-1'de) | Baran | ☐ kod hazır, **duman testi yeşil** (sentetik) | 25.10 | `onisleme/onisle.py` · gerçek MRI, HD-BET ve MNI kaydı henüz denenmedi |
 | 10 | PROTOKOL + ortak eğitim kodu | Baran | ✅ kod hazır ve **uçtan uca koştu** (7 denetim + 4 çalışma zamanı hatası düzeltildi) | 25.10 | `uygulama/ortak/` · düzeltmeler ve doğrulama tablosu `DEVAM.md` |
-| 11 | Gereksinim analizi + use-case | Görkem | ✅ bitti | 25.10 | `rapor/ARA-RAPOR-2-TASLAK.md §3` · PlantUML: `rapor/sekiller/usecase.puml` |
+| 11 | Gereksinim analizi + use-case | Görkem | ✅ bitti | 25.10 | `rapor/ARA-RAPOR-2.md §3` · PlantUML: `rapor/sekiller/usecase.puml` |
 | 12 | Mimari blok + ER + akış diyagramları | Ertuğrul | ✅ bitti | 25.10 | `rapor/sekiller/`: mimari.puml, er.puml, akis_onisleme.puml, akis_egitim.puml, akis_tahmin.puml |
 | 13 | Arayüz mock-up'ları | Görkem | ✅ bitti | 25.10 | `rapor/sekiller/mockups_spec.md` (E1–E7 ekranları + yasal uyarı) |
 | 14 | Ara Rapor 2 birleştirme | Baran | ☐ başlamadı | — | BSM401 şablonu |
